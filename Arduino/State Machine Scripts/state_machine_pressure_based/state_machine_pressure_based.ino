@@ -1,8 +1,8 @@
 /*
  * @file    state_machine_pressure
  * @author  CU Boulder Medtronic Team 7
- * @brief   This state machine controls two pumps and two valves through code, 
- *          but there is no implementation of the pressure sensor yet
+ * @brief   This code controls the pressure within the channels using the pressure. 
+ *          Note that this code does not work and is bugged
  */
 
 #include <Wire.h>
@@ -14,12 +14,31 @@
 #define EOC_PIN    -1  // set to any GPIO pin to read end-of-conversion by pin
 Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 
-// Initialize the pressure reading variables
+// I/O Pins
+#define BUTTON  13
+#define POSITIVE_PUMP 3
+#define SOLENOID  5
+#define NEGATIVE_PUMP 6
+
+// Possible States
+typedef enum {
+  RESET,
+  INFLATE,
+  HOLD,
+  DEFLATE
+} state;
+
+// Init states
+state currentState = RESET;
+state previousState = RESET;
+
+// Last time pressure was read
 unsigned long lastPressureReadTime = millis();
-unsigned long currentTime;
+unsigned long currentTime = 0;
+unsigned long startHoldTime = 0;
+unsigned long startResetTime = 0;
 
 void setup() {
-  // Pressure Sensor setup
   Serial.begin(115200);
   
   // Init sensor
@@ -29,54 +48,97 @@ void setup() {
       delay(10);
     }
   }
-
-  // Setup pins for 2 pumps and 2 valves
-  pinMode(3, OUTPUT); // inflation pump
-  pinMode(5, OUTPUT); // solenoid for pump 3
-  pinMode(6, OUTPUT); // deflation pump
-  pinMode(9, OUTPUT); // solenoid for pump 6
-
-  // Set the initial state of the pumps and valves to be closed
-  analogWrite(3, 0);
-  analogWrite(5, 0);
-  analogWrite(6, 0);
-  analogWrite(9, 0);
+  
+  pinMode(BUTTON, INPUT);
+  pinMode(POSITIVE_PUMP, OUTPUT);
+  pinMode(NEGATIVE_PUMP, OUTPUT);
+  pinMode(SOLENOID, OUTPUT);
 }
-
 
 void loop() {
-  // Inflate the robot
-  disp_pressure(100);
-  analogWrite(3, 255);
-  analogWrite(5, 255);
-  delay(400);
-
-  // Hold the inflation0
-  disp_pressure(100);
-  analogWrite(5, 0);
-  analogWrite(3, 0);
-  delay(3000);
-  
-  // Deflate the robot
-  disp_pressure(100);
-  analogWrite(6, 255);
-  analogWrite(9, 255);
-  delay(400);
-
-  // Hold the deflation
-  disp_pressure(100);
-  analogWrite(9, 0);
-  analogWrite(6, 0);
-  delay(3000);
+  primary();
 }
 
-// function to display the pressure
-void disp_pressure(unsigned long readDelay) {
+/*
+ * Function to display the pressure sensor
+ */
+void disp_pressure(unsigned long readDelay)
+{
   unsigned long currentTime = millis();
 
   if ((currentTime - lastPressureReadTime) > readDelay)
   {
-    Serial.print("Pressure (PSI): "); Serial.println(mpr.readPressure() / 68.947572932);
+    // Serial.print("Pressure (PSI): "); Serial.println(mpr.readPressure() / 68.947572932);
     lastPressureReadTime = millis();
   }
+}
+
+/**
+ * Primary State machine
+ */
+void primary() 
+{
+  previousState = currentState;
+  
+  switch(currentState) {
+    
+    case RESET:
+      disp_pressure(1000);
+      
+      currentTime = millis();
+      if(previousState != currentState)
+      {
+        startResetTime = currentTime;
+      }
+      
+      analogWrite(SOLENOID, 0);
+      analogWrite(POSITIVE_PUMP, 0);
+      analogWrite(NEGATIVE_PUMP, 0);
+      
+      if ((currentTime - startResetTime) > 5000)
+      {
+        Serial.print("HERE");
+        currentState = INFLATE;
+      }
+      break;
+    
+    case INFLATE:
+      disp_pressure(100);
+      analogWrite(SOLENOID, 255);
+      analogWrite(POSITIVE_PUMP, 255);
+      if ((mpr.readPressure() / 68.947572932) >= 12.67) 
+      {
+        currentState = HOLD;
+      }
+      break;
+
+    case HOLD:
+      disp_pressure(1000);
+      
+      currentTime = millis();
+      if(previousState != currentState)
+      {
+        startHoldTime = currentTime;
+      }
+      analogWrite(SOLENOID, 0);
+      analogWrite(POSITIVE_PUMP, 0);
+      analogWrite(NEGATIVE_PUMP, 0);
+      if ((currentTime - startHoldTime) > 5000)
+      {
+        currentState = DEFLATE;
+      }
+      break;
+
+    case DEFLATE:
+      disp_pressure(100);
+      analogWrite(SOLENOID, 255);
+      analogWrite(NEGATIVE_PUMP, 255);
+      if ((mpr.readPressure() / 68.947572932) <= 11.63)       
+      {
+        currentState = RESET;
+      }
+      break;
+      
+  }
+  
 }
