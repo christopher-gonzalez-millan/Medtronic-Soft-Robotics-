@@ -5,14 +5,14 @@
  *          Based on https://playground.arduino.cc/Main/I2cScanner/
  */
 
-#include "Wire.h"
-#include "Adafruit_MPRLS.h"
+#include <Wire.h>             // library for I2C connections
+#include "Adafruit_MPRLS.h"   // library for the pressure sensor
 
 #define TCAADDR 0x70   // TCA Address for multiplexer
 #define RESET_PIN  -1  // set to any GPIO pin # to hard-reset on begin()
 #define EOC_PIN    -1  // set to any GPIO pin to read end-of-conversion by pin
 
-// Instantiate mpr objects for each sensor
+// Instantiate mpr class for each sensor
 Adafruit_MPRLS mpr0 = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 Adafruit_MPRLS mpr1 = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 Adafruit_MPRLS mpr2 = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
@@ -51,7 +51,50 @@ void scanner()
             }
         }
     }   
-    Serial.println("\ndone");
+    Serial.println("\nFinished scanning mux ports\n");
+    Serial.println("------------------------------------------------------");
+    delay(5000);
+}
+
+/*
+ * @name    sensor_initialization
+ * @desc    Used to initialize each of the pressure sensors
+ * @param   None
+ * @return  None
+ */
+void sensor_initialization()
+{
+    Serial.println("Initializing pressure sensors:"); Serial.println("");
+      
+    // Init first sensor
+    tcaselect(0);
+    if (!mpr0.begin())
+    {
+      Serial.println("Error initializing Sensor 0");
+      while(1);
+    }
+    Serial.println("Initialized Sensor 0");
+    
+    // Init second sensor
+    tcaselect(1);
+    if (!mpr1.begin())
+    {
+      Serial.println("Error initializing Sensor 1");
+      while(1);
+    }
+    Serial.println("Initialized Sensor 1");
+    
+    // Init third sensor
+    tcaselect(2);
+    if (!mpr2.begin())
+    {
+      Serial.println("Error initializing Sensor 2");
+      while(1);
+    }
+    
+    Serial.println("Initialized Sensor 2\n");
+    Serial.println("------------------------------------------------------");
+    delay(5000);
 }
 
 /*
@@ -72,21 +115,52 @@ void tcaselect(uint8_t i) {
 }
 
 /*
+ * @name    pressure_reading
+ * @desc    Function that obtains the pressure readings from each of the sensors
+ * @param   counter - current log number
+ * @return  None
+ */ 
+void pressure_reading(int counter)
+{
+    Serial.print("Sample Number: "); Serial.println(counter); Serial.println("");
+      
+    // Obtain pressure sensor reading from Sensor 0
+    Serial.println("Pressure from Sensor 0:");
+    tcaselect(0);
+    float pressure_hPa0 = mpr0.readPressure();
+    Serial.print("Pressure (PSI): "); Serial.println( pressure_hPa0 / 68.947572932);
+    
+
+    // obtain pressure reading from Sensor 1
+    Serial.println("\nPressure from Sensor 1:");
+    tcaselect(1);
+    float pressure_hPa1 = mpr1.readPressure();
+    Serial.print("Pressure (PSI): "); Serial.println( pressure_hPa1 / 68.947572932);
+    
+    // obtain pressure reading from Sensor 2
+    Serial.println("\nPressure from Sensor 2:");
+    tcaselect(2);
+    float pressure_hPa2 = mpr2.readPressure();
+    Serial.print("Pressure (PSI): "); Serial.println( pressure_hPa2 / 68.947572932);
+
+    Serial.println("------------------------------------------------------");
+    delay(1000);
+}
+
+// Log count for how many times you have displayed the pressures
+int counter = 0;
+
+/*
  * @name  setup
  * @desc  called once on startup
  */
 void setup()
 {
-    Wire.begin();
-    Serial.begin(115200);
+    // Run scanner to see the used mux ports
+    scanner();
 
-    // Init first sensor
-    tcaselect(1);
-    if (!mpr1.begin())
-    {
-      Serial.println("Error beginning sensor 1");
-      while(1);
-    }
+    // initialize the three pressure sensors
+    sensor_initialization();
 }
 
 /*
@@ -95,7 +169,9 @@ void setup()
  */
 void loop() 
 {
-  float pressure_hPa = mpr0.readPressure();
-  Serial.print("Pressure (PSI): "); Serial.println( pressure_hPa / 68.947572932);
-  delay(1000);
+    // count the samples
+    counter++;
+    
+    // get a pressure reading from three sensors
+    pressure_reading(counter);
 }
