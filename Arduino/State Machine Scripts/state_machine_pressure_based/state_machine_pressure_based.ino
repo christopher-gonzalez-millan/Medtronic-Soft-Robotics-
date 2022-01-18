@@ -1,8 +1,7 @@
 /*
  * @file    state_machine_pressure
  * @author  CU Boulder Medtronic Team 7
- * @brief   This code controls the pressure within the channels using the pressure. 
- *          Note that this code does not work and is bugged
+ * @brief   This state machine is like Ver 2 but actually functions using the pressure sensor
  */
 
 #include <Wire.h>
@@ -30,7 +29,7 @@ typedef enum {
 
 // Init states
 state currentState = RESET;
-state previousState = RESET;
+state previousState = DEFLATE;
 
 // Last time pressure was read
 unsigned long lastPressureReadTime = millis();
@@ -78,7 +77,6 @@ void disp_pressure(unsigned long readDelay)
  */
 void primary() 
 {
-  previousState = currentState;
   
   switch(currentState) {
     
@@ -89,6 +87,7 @@ void primary()
       if(previousState != currentState)
       {
         startResetTime = currentTime;
+        previousState = currentState;
       }
       
       analogWrite(SOLENOID, 0);
@@ -108,17 +107,19 @@ void primary()
       analogWrite(POSITIVE_PUMP, 255);
       if ((mpr.readPressure() / 68.947572932) >= 12.67) 
       {
+        previousState = currentState;
         currentState = HOLD;
       }
       break;
 
     case HOLD:
       disp_pressure(1000);
-      
+
       currentTime = millis();
       if(previousState != currentState)
       {
         startHoldTime = currentTime;
+        previousState = currentState;
       }
       analogWrite(SOLENOID, 0);
       analogWrite(POSITIVE_PUMP, 0);
@@ -135,10 +136,11 @@ void primary()
       analogWrite(NEGATIVE_PUMP, 255);
       if ((mpr.readPressure() / 68.947572932) <= 11.63)       
       {
+        previousState = currentState;
         currentState = RESET;
       }
       break;
-      
+
   }
   
 }
