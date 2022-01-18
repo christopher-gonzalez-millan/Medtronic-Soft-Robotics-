@@ -1,0 +1,2 @@
+This directory contains scripts used to test the specific hardware we used on our control board.
+This includes testing for the multiplexer, pressure sensors, and testing PWM on our pumps and solenoid valves.
