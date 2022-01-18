@@ -1,7 +1,8 @@
 /*
  * @file    state_machine_pressure
  * @author  CU Boulder Medtronic Team 7
- * @brief   This state machine is like Ver 2 but actually functions using the pressure sensor
+ * @brief   This version attempts to integrate a button to control the start and stop states
+ *          of the robot. It is currently not working in this version
  */
 
 #include <Wire.h>
@@ -21,21 +22,25 @@ Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 
 // Possible States
 typedef enum {
-  RESET,
+  START,
   INFLATE,
   HOLD,
-  DEFLATE
+  DEFLATE,
+  STOP
 } state;
 
+bool enter_INFLATE = true;
+bool enter_DEFLATE = true;
+
 // Init states
-state currentState = RESET;
-state previousState = DEFLATE;
+state currentState = STOP;
+state previousState = START;
 
 // Last time pressure was read
 unsigned long lastPressureReadTime = millis();
 unsigned long currentTime = 0;
 unsigned long startHoldTime = 0;
-unsigned long startResetTime = 0;
+unsigned long startTime = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -67,9 +72,14 @@ void disp_pressure(unsigned long readDelay)
 
   if ((currentTime - lastPressureReadTime) > readDelay)
   {
-    // Serial.print("Pressure (PSI): "); Serial.println(mpr.readPressure() / 68.947572932);
+    Serial.print("Pressure (PSI): "); Serial.println(mpr.readPressure() / 68.947572932);
     lastPressureReadTime = millis();
   }
+}
+
+bool is_button_pressed(void)
+{
+  return (digitalRead(BUTTON) == LOW);
 }
 
 /**
@@ -77,70 +87,93 @@ void disp_pressure(unsigned long readDelay)
  */
 void primary() 
 {
-  
   switch(currentState) {
     
-    case RESET:
-      disp_pressure(1000);
+    case START:
+      disp_pressure(10);
       
       currentTime = millis();
-      if(previousState != currentState)
+      if(startTime == 0)
       {
-        startResetTime = currentTime;
-        previousState = currentState;
+        startTime = currentTime;
       }
       
       analogWrite(SOLENOID, 0);
       analogWrite(POSITIVE_PUMP, 0);
       analogWrite(NEGATIVE_PUMP, 0);
-      
-      if ((currentTime - startResetTime) > 5000)
+
+      if ((currentTime - startTime) > 1000)
       {
-        Serial.print("HERE");
+        previousState = currentState;
         currentState = INFLATE;
+        startTime = 0;
       }
       break;
     
     case INFLATE:
-      disp_pressure(100);
+      disp_pressure(10);
       analogWrite(SOLENOID, 255);
-      analogWrite(POSITIVE_PUMP, 255);
+      if(enter_INFLATE == true)
+      {
+        analogWrite(POSITIVE_PUMP, 120); 
+        enter_INFLATE = false;
+      }
       if ((mpr.readPressure() / 68.947572932) >= 12.67) 
       {
         previousState = currentState;
         currentState = HOLD;
+        delay(1000);
+        enter_INFLATE = true;
       }
       break;
 
     case HOLD:
-      disp_pressure(1000);
+      disp_pressure(10);
 
       currentTime = millis();
-      if(previousState != currentState)
+      if(startHoldTime == 0)
       {
         startHoldTime = currentTime;
-        previousState = currentState;
       }
       analogWrite(SOLENOID, 0);
       analogWrite(POSITIVE_PUMP, 0);
       analogWrite(NEGATIVE_PUMP, 0);
-      if ((currentTime - startHoldTime) > 5000)
+      if ((currentTime - startHoldTime) > 1000)
       {
+        previousState = currentState;
         currentState = DEFLATE;
+        startHoldTime = 0;
       }
       break;
 
     case DEFLATE:
-      disp_pressure(100);
+      disp_pressure(10);
       analogWrite(SOLENOID, 255);
-      analogWrite(NEGATIVE_PUMP, 255);
+      if(enter_DEFLATE == true)
+      {
+        analogWrite(NEGATIVE_PUMP, 255);
+        enter_DEFLATE = false;
+      }
       if ((mpr.readPressure() / 68.947572932) <= 11.63)       
       {
         previousState = currentState;
-        currentState = RESET;
+        currentState = START;
+        delay(1000);
+        enter_DEFLATE = true;
       }
       break;
 
+     case STOP:
+      disp_pressure(10);
+      analogWrite(SOLENOID, 255);
+      analogWrite(POSITIVE_PUMP, 0);
+      analogWrite(NEGATIVE_PUMP, 0);
+      if (digitalRead(BUTTON) == LOW) 
+      {
+        delay(1000);
+        currentState = START;
+      }
+      break;
   }
   
 }
