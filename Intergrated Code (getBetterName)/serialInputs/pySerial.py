@@ -5,9 +5,9 @@ import warnings
 
 def findArduino():
     arduino_ports = [
-    p.device
-    for p in serial.tools.list_ports.comports()
-    if 'Arduino' in p.description  # may need tweaking to match new arduinos
+        p.device
+        for p in serial.tools.list_ports.comports()
+        if 'Arduino' in p.description  # may need tweaking to match new arduinos
     ]
     
     if not arduino_ports:
@@ -42,13 +42,8 @@ def test():
 
 
 # Define the serial port and baud rate.
-com = findArduino()
-ser = serial.Serial(com[0], 9600)
+#com = findArduino()
+ser = serial.Serial(port='COM3', baudrate=115200, timeout=0.1)
 time.sleep(2) # wait for the serial connection to initialize
 
 test()
-
-
-
-    
-

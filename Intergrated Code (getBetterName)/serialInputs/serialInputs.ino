@@ -1,5 +1,4 @@
 #include <Wire.h>               // library for I2C connections
-#include "Adafruit_MPRLS.h"     // library for the pressure sensor
 
 // Pin definitions for the pressure sensor
 #define RESET_PIN  -1  // set to any GPIO pin # to hard-reset on begin()
@@ -48,6 +47,8 @@ unsigned long currentTime = 0;
 unsigned long startHoldTime = 0;
 unsigned long startTime = 0;
 
+int incomingByte;
+
 void setup() {
 // scan for mux ports and begin serial communication
     scanner();
@@ -62,8 +63,6 @@ void setup() {
 }
 
 void loop() {
-  disp_pressure(1000);
-  
   // see if there's incoming serial data:
   if (Serial.available() > 0) {
     // read the oldest byte in the serial buffer:
@@ -188,7 +187,7 @@ void primary0()
             tcaselect(SENSOR_ID_0);
             if ( (mpr.readPressure() / 68.947572932) >= 12.1 )
             {
-              digitalWrite(POSTITIVE_SOLENOID, SOLENOID_CLOSED);
+              digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
               digitalWrite(NEGATIVE_SOLENOID, HIGH);
               delay(3);
               digitalWrite(8, LOW);
@@ -197,7 +196,7 @@ void primary0()
             else
             {
               digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
-              digitalWrite(NEGSTIVE_SOLENOID, SOLENOID_OPEN);
+              digitalWrite(NEGATIVE_SOLENOID, SOLENOID_OPEN);
             }
             // digitalWrite(7, SOLENOID_CLOSED);      
             // digitalWrite(8, SOLENOID_OPEN);
