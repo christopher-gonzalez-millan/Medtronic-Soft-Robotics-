@@ -48,6 +48,8 @@ unsigned long currentTime = 0;
 unsigned long startHoldTime = 0;
 unsigned long startTime = 0;
 
+int incomingByte;
+
 void setup() {
 // scan for mux ports and begin serial communication
     scanner();
@@ -188,7 +190,7 @@ void primary0()
             tcaselect(SENSOR_ID_0);
             if ( (mpr.readPressure() / 68.947572932) >= 12.1 )
             {
-              digitalWrite(POSTITIVE_SOLENOID, SOLENOID_CLOSED);
+              digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
               digitalWrite(NEGATIVE_SOLENOID, HIGH);
               delay(3);
               digitalWrite(8, LOW);
@@ -197,7 +199,7 @@ void primary0()
             else
             {
               digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
-              digitalWrite(NEGSTIVE_SOLENOID, SOLENOID_OPEN);
+              digitalWrite(NEGATIVE_SOLENOID, SOLENOID_OPEN);
             }
             // digitalWrite(7, SOLENOID_CLOSED);      
             // digitalWrite(8, SOLENOID_OPEN);
