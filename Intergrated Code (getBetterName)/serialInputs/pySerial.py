@@ -42,7 +42,7 @@ def test():
 
 
 # Define the serial port and baud rate.
-ser = serial.Serial('COM3', 9600)
+ser = serial.Serial('COM3', 115200)
 time.sleep(2) # wait for the serial connection to initialize
 
 # Define Variables
