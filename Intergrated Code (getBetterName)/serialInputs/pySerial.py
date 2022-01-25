@@ -52,25 +52,9 @@ Accz = []
 
 len = 51
 
-for i in range (len):               # Wait until the buffer is filled up to 50 values
-    while (ser.inWaiting() == 0):   
-        pass                        
-        
-    arduinoString = ser.readline().decode("utf-8") #.strip()
-    
-    dataArray = (arduinoString.split(','))      # Since the values are being sent consecutively, 
-                                                # the values must be split into x,y,and z
-    # Data conversion from string to float
-    temp1 = float(dataArray[0])             
-    temp2 = float(dataArray[1]) 
-    temp3 = float(dataArray[2])
-    
-    # Convert second element to floating number and put in P
-    Accx.append(temp1)                      
-    Accy.append(temp2)                      
-    Accz.append(temp3)
-
-print(Accx)    
+while True:
+    arduinoString = ser.readline().decode("utf-8") #.strip()    
+    print(arduinoString)
 
 
 
