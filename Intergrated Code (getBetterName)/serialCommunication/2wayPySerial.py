@@ -17,7 +17,7 @@ ser = serial.Serial('COM3', 115200)
 time.sleep(2) # wait for the serial connection to initialize
 
 def printer():
-    while True:
+    while not G.kill:
         arduinoString = ser.readline().decode("utf-8") #.strip()    
         print(arduinoString)
         time.sleep(0.01) #To see diffrence between prints
