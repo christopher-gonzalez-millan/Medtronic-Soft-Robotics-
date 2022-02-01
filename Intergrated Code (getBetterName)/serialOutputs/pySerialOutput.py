@@ -42,8 +42,22 @@ def test():
 
 
 # Define the serial port and baud rate.
-#com = findArduino()
-ser = serial.Serial(port='COM3', baudrate=115200, timeout=0.1)
+ser = serial.Serial('COM3', 115200)
 time.sleep(2) # wait for the serial connection to initialize
 
-test()
+# Define Variables
+Accx = []
+Accy = []
+Accz = []
+
+len = 51
+
+while True:
+    arduinoString = ser.readline().decode("utf-8") #.strip()    
+    print(arduinoString)
+
+
+
+
+    
+
