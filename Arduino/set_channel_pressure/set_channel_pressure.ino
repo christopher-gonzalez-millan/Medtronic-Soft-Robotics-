@@ -4,6 +4,7 @@
  * @brief   Basic method to hit desired pressure in any channel
  */
 
+#include <stdlib.h>
 #include <Wire.h>               // library for I2C connections
 #include "Adafruit_MPRLS.h"     // library for the pressure sensor
 
@@ -18,7 +19,7 @@ Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 
 // Channel/pressure related defines
 #define NUM_CHANNELS  1 // will be 3
-#define DEFAULT_PRESSURE 13
+#define DEFAULT_PRESSURE 13.0
 #define PRESSURE_HOLD_TOLERANCE 0.1
 #define PRESSURE_TOLERANCE 0.05
 
@@ -31,7 +32,7 @@ Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 
 // Serial related defines
 #define EXPECTED_MSG_LENGTH 5 // will be 15 bytes
-#define COMMAND_FREQUENCY_MS 100 // milliseconds
+#define COMMAND_FREQUENCY_MS 1000 // milliseconds
  
 // Possible States
 typedef enum {
@@ -103,38 +104,41 @@ void loop() {
         bool foundCommand = false;
         while(Serial.available()) 
         {
-            char c = Serial.read();
-            if ((c == 'x') && (previous == 'x') &&
-                (Serial.available() >= EXPECTED_MSG_LENGTH))
+            if ((Serial.available() >= EXPECTED_MSG_LENGTH))
             {
                 foundCommand = true;
                 break;
             }
-            previous = c;
+            break;
         }
 
         if (foundCommand == true)
         {
-            String pressure;
+            char pressureVal[4];
             // Read in pressure values for all channels
             for (int8_t cNum = 0; cNum < NUM_CHANNELS; cNum++)
             {
                 // Parse 4 characters for given channel
                 for (int8_t i = 0; i < 4; i++)
                 {
-                    pressure[i] = Serial.read();
+                    char asc = Serial.read();
+                    pressureVal[i] = asc;
                 }
                 // Parse out delimeter'
                 char delimeter = Serial.read();
-                channels[1].desiredPressure = ((float)pressure.toInt()/100);
-                Serial.println(channels[1].desiredPressure);
+
+                char pressure[5];
+                sprintf(pressure, "%c%c.%c%c", pressureVal[0], pressureVal[1], pressureVal[2], pressureVal[3]);
+                channels[0].desiredPressure = ((String(pressure)).toFloat());
+                // Serial.println(channels[0].desiredPressure);
             }
             
             // Flush rest of input buffer
-            //while(Serial.available()) 
-            //{
-            //    char t = Serial.read();
-            //}
+            while(Serial.available()) 
+            {
+                char t = Serial.read();
+                Serial.println(t);
+            }
 
             // Update last command time
             lastCommandTime = millis();
@@ -146,6 +150,7 @@ void loop() {
     {
         channels[cNum].currentPressure = get_pressure(mpr, cNum);
         // Serial.println(channels[cNum].currentPressure);
+        Serial.println(channels[0].desiredPressure);
 
         switch (channels[cNum].currentState)
         {
