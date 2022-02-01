@@ -5,9 +5,9 @@ import warnings
 
 def findArduino():
     arduino_ports = [
-    p.device
-    for p in serial.tools.list_ports.comports()
-    if 'Arduino' in p.description  # may need tweaking to match new arduinos
+        p.device
+        for p in serial.tools.list_ports.comports()
+        if 'Arduino' in p.description  # may need tweaking to match new arduinos
     ]
     
     if not arduino_ports:
