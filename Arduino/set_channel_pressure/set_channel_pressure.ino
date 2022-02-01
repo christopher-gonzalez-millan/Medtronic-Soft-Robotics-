@@ -19,9 +19,10 @@ Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 
 // Channel/pressure related defines
 #define NUM_CHANNELS  1 // will be 3
-#define DEFAULT_PRESSURE 13.0
-#define PRESSURE_HOLD_TOLERANCE 0.1
-#define PRESSURE_TOLERANCE 0.05
+#define DEFAULT_PRESSURE 12.0
+#define PRESSURE_HOLD_TOLERANCE 0.15
+#define PRESSURE_TOLERANCE 0.03
+#define HOLD_TIME_MS 500
 
 // I/O related defines
 #define SOLENOID_CLOSED LOW
@@ -31,7 +32,7 @@ Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 #define PUMP_OFF 0
 
 // Serial related defines
-#define EXPECTED_MSG_LENGTH 5 // will be 15 bytes
+#define EXPECTED_MSG_LENGTH 4 // will be 15 bytes
 #define COMMAND_FREQUENCY_MS 1000 // milliseconds
  
 // Possible States
@@ -50,12 +51,13 @@ struct channelData
     int negativePump;
     int positiveSolenoid;
     int negativeSolenoid;
+    unsigned long startHoldTime;
 };
 
 channelData channels[NUM_CHANNELS] =
 {
     // {HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 3,  5,  2,  4},
-    {HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 6,  9,  7,  8},
+    {HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 6,  9,  7,  8, 0},
     // {HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10, 11, 12, 13},
 };
 
@@ -125,7 +127,7 @@ void loop() {
                     pressureVal[i] = asc;
                 }
                 // Parse out delimeter'
-                char delimeter = Serial.read();
+                // char delimeter = Serial.read();
 
                 char pressure[5];
                 sprintf(pressure, "%c%c.%c%c", pressureVal[0], pressureVal[1], pressureVal[2], pressureVal[3]);
@@ -150,7 +152,7 @@ void loop() {
     {
         channels[cNum].currentPressure = get_pressure(mpr, cNum);
         // Serial.println(channels[cNum].currentPressure);
-        Serial.println(channels[0].desiredPressure);
+        // Serial.println(channels[0].desiredPressure);
 
         switch (channels[cNum].currentState)
         {
@@ -159,6 +161,7 @@ void loop() {
                     (channels[cNum].currentPressure <= (channels[cNum].desiredPressure + PRESSURE_TOLERANCE)) )
                 {
                     channels[cNum].currentState = HOLD;
+                    channels[cNum].startHoldTime = currentTime;
                 }
                 else if (channels[cNum].currentPressure >= (channels[cNum].desiredPressure + PRESSURE_HOLD_TOLERANCE))
                 {
@@ -167,13 +170,16 @@ void loop() {
                 break; 
                 
             case HOLD:
-                if (channels[cNum].currentPressure <= (channels[cNum].desiredPressure - PRESSURE_HOLD_TOLERANCE))
+                //if ((currentTime - channels[cNum].startHoldTime) >= HOLD_TIME_MS)
                 {
-                    channels[cNum].currentState = INFLATE;
-                }
-                else if (channels[cNum].currentPressure > (channels[cNum].desiredPressure + PRESSURE_HOLD_TOLERANCE))
-                {
-                    channels[cNum].currentState = DEFLATE;
+                    if (channels[cNum].currentPressure <= (channels[cNum].desiredPressure - PRESSURE_HOLD_TOLERANCE))
+                    {
+                        channels[cNum].currentState = INFLATE;
+                    }
+                    else if (channels[cNum].currentPressure > (channels[cNum].desiredPressure + PRESSURE_HOLD_TOLERANCE))
+                    {
+                        channels[cNum].currentState = DEFLATE;
+                    }
                 }
                 break;
                 
@@ -182,6 +188,7 @@ void loop() {
                     (channels[cNum].currentPressure <= (channels[cNum].desiredPressure + PRESSURE_TOLERANCE)) )
                 {
                     channels[cNum].currentState = HOLD;
+                    channels[cNum].startHoldTime = currentTime;
                 }
                 else if (channels[cNum].currentPressure <= (channels[cNum].desiredPressure - PRESSURE_HOLD_TOLERANCE))
                 {
@@ -210,6 +217,7 @@ void loop() {
                 // Pumps
                 analogWrite(channels[cNum].positivePump, PUMP_OFF);
                 analogWrite(channels[cNum].negativePump, PUMP_OFF);
+                break;
             
             case DEFLATE:
                 // Solenoids
@@ -219,7 +227,7 @@ void loop() {
                     digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_OPEN);
                     delay(2);
                     digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
-                    delay(30);
+                    delay(10);
                 }
                 else
                 {
@@ -229,6 +237,7 @@ void loop() {
                 // Pumps
                 analogWrite(channels[cNum].positivePump, PUMP_OFF);
                 analogWrite(channels[cNum].negativePump, PUMP_PWM_NEG); 
+                break;
         }
         
     }
@@ -319,5 +328,6 @@ float get_pressure(Adafruit_MPRLS mpr, uint8_t channelNum)
     // tcaselect(channelNum);
     float pressure_hPa0 = mpr.readPressure();
     float presssure_PSI = (pressure_hPa0 / 68.947572932);
+    // Serial.println(presssure_PSI);
     return presssure_PSI;
 }
