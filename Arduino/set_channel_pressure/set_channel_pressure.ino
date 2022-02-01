@@ -5,6 +5,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <Wire.h>               // library for I2C connections
 #include "Adafruit_MPRLS.h"     // library for the pressure sensor
 
@@ -131,7 +132,19 @@ void loop() {
 
                 char pressure[5];
                 sprintf(pressure, "%c%c.%c%c", pressureVal[0], pressureVal[1], pressureVal[2], pressureVal[3]);
-                channels[0].desiredPressure = ((String(pressure)).toFloat());
+                
+                if (strncmp(pressure, "99.99", 5) == 0)
+                {
+                    // Read pressure command
+                    channels[cNum].currentPressure = get_pressure(mpr, 1);
+                    String pVal = String(channels[cNum].currentPressure, 2);
+                    Serial.println(pVal);
+                } 
+                else
+                {
+                    // Set pressure command
+                    channels[0].desiredPressure = ((String(pressure)).toFloat());
+                }
                 // Serial.println(channels[0].desiredPressure);
             }
             
@@ -139,7 +152,7 @@ void loop() {
             while(Serial.available()) 
             {
                 char t = Serial.read();
-                Serial.println(t);
+                // Serial.println(t);
             }
 
             // Update last command time
@@ -251,12 +264,12 @@ void scanner()
     Wire.begin();
     
     Serial.begin(115200);
-    Serial.println("\nTCAScanner ready!");
+    // Serial.println("\nTCAScanner ready!");
     
     for (uint8_t t=0; t<8; t++) {
         tcaselect(t);
-        Serial.print("TCA Port #"); 
-        Serial.println(t);
+        // Serial.print("TCA Port #"); 
+        // Serial.println(t);
 
         for (uint8_t addr = 0; addr<=127; addr++) 
         {
@@ -267,48 +280,48 @@ void scanner()
             Wire.beginTransmission(addr);
             if (!Wire.endTransmission()) 
             {
-                Serial.print("Found I2C 0x");  
-                Serial.println(addr,HEX);
+                //Serial.print("Found I2C 0x");  
+                // Serial.println(addr,HEX);
             }
         }
     }   
-    Serial.println("\nFinished scanning mux ports\n");
-    Serial.println("------------------------------------------------------");
-    delay(1000);
+    //Serial.println("\nFinished scanning mux ports\n");
+    //Serial.println("------------------------------------------------------");
+    //delay(1000);
 }
 
 void sensor_initialization()
 {
-    Serial.println("Initializing pressure sensors:"); Serial.println("");
+    //Serial.println("Initializing pressure sensors:"); Serial.println("");
     
     // Init first sensor
     tcaselect(0);
     if (!mpr.begin())
     {
-      Serial.println("Error initializing Sensor 0");
+      //Serial.println("Error initializing Sensor 0");
       while(1);
     }
-    Serial.println("Initialized Sensor 0");
+    //Serial.println("Initialized Sensor 0");
 
     // Init second sensor
     tcaselect(1);
     if (!mpr.begin())
     {
-      Serial.println("Error initializing Sensor 1");
+      //Serial.println("Error initializing Sensor 1");
       while(1);
     }
-    Serial.println("Initialized Sensor 1");
+    //Serial.println("Initialized Sensor 1");
     
     // Init third sensor
     tcaselect(2);
     if (!mpr.begin())
     {
-      Serial.println("Error initializing Sensor 2");
+      //Serial.println("Error initializing Sensor 2");
       while(1);
     }
-    Serial.println("Initialized Sensor 2\n");
-    Serial.println("------------------------------------------------------");
-    delay(1000);
+    //Serial.println("Initialized Sensor 2\n");
+    //Serial.println("------------------------------------------------------");
+    //delay(1000);
 }
 
 void tcaselect(uint8_t i) {

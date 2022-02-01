@@ -5,6 +5,7 @@
 '''
 
 import serial as pys
+import time
 ser = pys.Serial()
 ser.baudrate = 115200
 ser.port = 'COM4'
@@ -16,14 +17,23 @@ if (ser.is_open != True):
     quit()
 
 while(True):
-    print("Enter pressure (XX.XX implied):")
-    nextPressure = input()
+    print("Enter pressure (XX.XX implied) or 'r' for read pressure:")
+    command = input()
     
     # quit
-    if (nextPressure == "q"):
+    if (command == "q"):
         break
+
+    if (command == "r"):
+        # Special flag to send to arduino
+        command = "9999"
     
     # Convert string to utf-8 and send over serial
-    bytesSent = ser.write(nextPressure.encode('utf-8'))
+    bytesSent = ser.write(command.encode('utf-8'))
+
+    if (command == "9999"):
+        time.sleep(.1)
+        temp = ser.readline().decode("utf-8")
+        print("Channel 1 Pressure: %(val)s" % {"val": temp.rstrip()})
 
 ser.close()
