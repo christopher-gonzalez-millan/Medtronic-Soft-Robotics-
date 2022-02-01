@@ -1,5 +1,4 @@
 {
     "board": "arduino:avr:uno",
-    "port": "COM3",
-    "sketch": "Arduino\\State Machine Scripts\\state_machine_pressure_based\\state_machine_pressure_based.ino"
+    "port": "COM3"
 }
