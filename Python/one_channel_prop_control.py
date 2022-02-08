@@ -83,6 +83,20 @@ class controllerThread(threading.Thread):
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
             print('Exception raise failure') 
         
+# < =============================== 1D Feedback Algorithm ===================================== >
+def one_D_feedback(z_des, z_act, P_act):
+    # define the proportional gain
+    k_p = 1
+
+    # Calculate the error between current and desired positions
+    eta_z = z_des - z_act
+
+    # Multiply by the proportional gain k_p
+    P_des = k_p * eta_z
+    # del_P_des = k_p * eta_z
+    # P_des = P_act + del_P_des
+
+    return P_des
 
 def main():
     '''
