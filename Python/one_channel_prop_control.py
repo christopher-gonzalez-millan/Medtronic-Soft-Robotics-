@@ -3,19 +3,23 @@
  * @author  CU Boulder Medtronic Team 7
  * @brief   Basic 1D proportional controller
 '''
+import NDISensor
 import threading
 from queue import Queue
 import ctypes
 import time
 import serial as pys
-ser = pys.Serial()
-ser.baudrate = 115200
-ser.port = 'COM4'
 from tkinter import *
 from tkinter import ttk
 
 # Globals shared between threads
 cmdQueue = Queue()
+
+ser = pys.Serial()
+ser.baudrate = 115200
+ser.port = 'COM4'
+
+ndi = NDISensor.NDISensor()
 
 # Class used for all commands
 class command:
@@ -104,7 +108,13 @@ class controllerThread(threading.Thread):
                 # Convert string to utf-8 and send over serial
                 bytesSent = ser.write(newCmd.field1.encode('utf-8'))
         elif (newCmd.id == "EM_Sensor"):
-            print("controller wants to read position")
+            # print("controller wants to read position")
+            global ndi
+            while True:
+                position = ndi.getPosition
+                if position:
+                    print("Delta Z: ", position.deltaZ)
+                
 
     def run(self):
         # target function of the thread class
@@ -186,6 +196,10 @@ def main():
     # Kill controller once GUI is excited
     t1.raise_exception()
     t1.join()
+
+    # Disconnect from NDI
+    global ndi
+    ndi.cleanup()
 
 if __name__ == "__main__":
     main()

@@ -15,4 +15,5 @@ try:
         if pos:
             pos.getZ()
 except:
-  test.cleanup()
+  print("Except")
+  # test.cleanup()

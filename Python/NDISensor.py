@@ -188,7 +188,7 @@ class NDISensor:
             return None
         
         numHandles = reply[0:2]
-        print("numHandles:" + numHandles)
+        # print("numHandles:" + numHandles)
     
         # <== Handle 1 ==>
         # handle1 = reply[2:4]
