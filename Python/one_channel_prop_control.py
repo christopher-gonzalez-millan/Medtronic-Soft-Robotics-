@@ -83,6 +83,28 @@ class controllerThread(threading.Thread):
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
             print('Exception raise failure') 
         
+# < =============================== 1D Feedback Algorithm ===================================== >
+def one_D_feedback(z_des, z_act, P_act, P_o):
+    # define the proportional gain
+    k_p = 1
+
+    # Calculate the error between current and desired positions
+    epsi_z = z_des - z_act
+
+    # Multiply by the proportional gain k_p
+    P_des = k_p * epsi_z
+
+    # < ------- Our feedback method --------- >
+    # del_P_des = k_p * epsi_z
+    # P_des = P_act + del_P_des
+
+    # < -------- Shalom delta P method ------- >
+    # Figure out how to utilize del_P_act instead of P_des (on Arduino side?)
+    # del_P_des = k_p*epsi_z
+    # P_des = P_o + del_P_des
+    # del_P_act = P_des - P_act
+
+    return P_des
 
 def main():
     '''
