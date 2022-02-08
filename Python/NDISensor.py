@@ -13,6 +13,8 @@ This is a temporary script file.
 
 #TODO: conditional import in class
 import ndicapy
+import atexit
+
 
 from ndicapy import (
     ndiDeviceName, ndiProbe, NDI_OKAY,
@@ -27,6 +29,15 @@ class parsedReply:
         self.deltaX = deltaX
         self.deltaY = deltaY
         self.deltaZ = deltaZ
+        
+    def getX(self):
+        print(self.deltaX)
+        
+    def getY(self):
+        print(self.deltaY)
+            
+    def getZ(self):
+        print(self.deltaZ)
 
 class NDISensor:
     #TODO: create better constructor
@@ -42,8 +53,12 @@ class NDISensor:
         self.setCommunication()
         self.setupPort()
         self.startTracking()
+        
+        atexit.register(self.cleanup)
+
     
-    def __del__(self):
+    def cleanup(self):
+        print("help")
         self.stopTracking()
         self.closeDevice()
                 
@@ -51,15 +66,14 @@ class NDISensor:
     def findPorts(self):
         # Number ports to check
         MAX_SERIAL_PORTS = 20
-        name = ''
         
         for port_no in range(MAX_SERIAL_PORTS):
-            name = ndiDeviceName(port_no)
+            self.name  = ndiDeviceName(port_no)
             
-            if not name:
+            if not self.name :
                 continue
                 
-            result = ndiProbe(name) #Returns 257 if port not found, otherwise returns 1
+            result = ndiProbe(self.name ) #Returns 257 if port not found, otherwise returns 1
             
             if result == NDI_OKAY: #NDI_OKAY == 0
                 print(port_no)
@@ -139,8 +153,7 @@ class NDISensor:
         Funciton to start tracking with ports currently set up
         '''
         reply = ndiCommand(self.device, 'TSTART:')
-        if reply != NDI_OKAY:
-            raise IOError('Error starting tracking')
+        print(reply)
 
 
     def stopTracking(self):
@@ -154,7 +167,7 @@ class NDISensor:
         '''
         Close out communication with opened device
         '''
-        ndiCommand(self.device, 'TSTOP:')
+        ndiClose(self.device)
     
     
     def getPosition(self):
@@ -162,6 +175,7 @@ class NDISensor:
         Recieve tool transformation from EM sensor
         '''
         reply = ndiCommand(self.device, 'TX:')
+        #print(reply)
         return self.parser(reply)    
       
     #TODO: figure out regex for easier debugging  
@@ -169,6 +183,10 @@ class NDISensor:
         '''
         Handles conversion of raw data from EM sensor into cleaned class
         '''
+        
+        if 'MISSING' in reply:
+            return None
+        
         numHandles = reply[0:2]
         print("numHandles:" + numHandles)
     
