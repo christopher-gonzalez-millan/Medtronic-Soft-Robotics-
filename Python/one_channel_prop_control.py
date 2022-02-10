@@ -146,6 +146,14 @@ class controllerThread(threading.Thread):
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
             print('Exception raise failure') 
         
+# < =============================== Distance vector function ================================== >
+def distance_calc(x_base, y_base, z_base, x_tip, y_tip, z_tip):
+    x_act = x_tip - x_base
+    y_act = y_tip - y_base
+    z_act = z_tip - z_base
+
+# < =========================================================================================== >
+
 # < =============================== 1D Feedback Algorithm ===================================== >
 def one_D_feedback(z_des, z_act, P_act, P_o):
     # define the proportional gain
