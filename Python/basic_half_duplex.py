@@ -22,6 +22,8 @@ while(True):
     
     # quit
     if (command == "q"):
+        command = "1225"
+        bytesSent = ser.write(command.encode('utf-8'))
         break
 
     if (command == "r"):

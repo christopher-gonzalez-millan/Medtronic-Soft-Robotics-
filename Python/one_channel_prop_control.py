@@ -103,7 +103,7 @@ class controllerThread(threading.Thread):
                 bytesSent = ser.write(command.encode('utf-8'))
                 time.sleep(.1)
                 temp = ser.readline().decode("utf-8")
-                print("Channel 1 Pressure: %(val)s" % {"val": temp.rstrip()})
+                print("Pressure: %(val)s" % {"val": temp.rstrip()})
             else:
                 # Convert string to utf-8 and send over serial
                 bytesSent = ser.write(newCmd.field1.encode('utf-8'))
@@ -199,10 +199,6 @@ def main():
     # Kill controller once GUI is excited
     t1.raise_exception()
     t1.join()
-
-    # Disconnect from NDI
-    global ndi
-    ndi.cleanup()
 
 if __name__ == "__main__":
     main()

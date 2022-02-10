@@ -58,7 +58,7 @@ class NDISensor:
 
     
     def cleanup(self):
-        print("help")
+        print("Successfully Disconnected from EM Sensor")
         self.stopTracking()
         self.closeDevice()
                 
@@ -191,6 +191,7 @@ class NDISensor:
         # print("numHandles:" + numHandles)
     
         # <== Handle 1 ==>
+        # EM microsensor in port 1
         # handle1 = reply[2:4]
         # print("\nHandle1: " + handle1)
     
@@ -210,16 +211,17 @@ class NDISensor:
         # print("\tTx: " + str(Tx) + "\tTy: " + str(Ty) + "\tTz:" + str(Tz))
     
         # <== Handle 2 ==>
+        # EM puck in port 2
         # handle2 = reply[71:73]; 
         # print("\nHandle2: " + handle2)
     
         # Tool positioning
-        Tx2 = float(reply[98:102] + "." + reply[102:104])
-        if (reply[97] == "-"):
+        Tx2 = float(reply[99:103] + "." + reply[103:105])
+        if (reply[98] == "-"):
             Tx2 *= -1
     
-        Ty2 = float(reply[105:109] + "." + reply[109:111])
-        if (reply[104] == "-"):
+        Ty2 = float(reply[106:110] + "." + reply[110:112])
+        if (reply[105] == "-"):
             Ty2 *= -1
             
         Tz2 = float(reply[112:116] + "." + reply[116:118])
@@ -227,5 +229,5 @@ class NDISensor:
             Tz2 *= -1
     
         # print("\tTx: " + str(Tx) + "\tTy: " + str(Ty) + "\tTz:" + str(Tz))
-    
-        return parsedReply((Tx2 - Tx1), (Ty2 - Ty1), (Tz2 - Tz1))
+
+        return parsedReply((Tx1 - Tx2), (Ty1 - Ty2), (Tz1 - Tz2))

@@ -13,7 +13,8 @@ try:
     while True:
         pos = test.getPosition()
         if pos:
-            pos.getZ()
+            pos.getX()
+            pos.getY()
 except:
   print("Except")
   # test.cleanup()
