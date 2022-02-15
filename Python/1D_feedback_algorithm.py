@@ -138,7 +138,7 @@ class controllerThread(threading.Thread):
         self.sendDesiredPressure()
 
     def getActualPressure(self):
-        '''
+        '''     
         Obtains actual pressure from pressure sensor
         '''
         global ser
@@ -184,21 +184,28 @@ class controllerThread(threading.Thread):
         '''
         convert P_des and send this pressure into the Arduino
         '''
-        # ensure we only send four digits into Arduino
-        if self.P_des >= 100:
-            self.P_des = 99.98          # NOTE: 99.99 is reserved as the read pressure command
+        # lower limit of the pressure we are sending into the controller
+        if self.P_des < 9:
+            self.p_des = 9.0
+
+        # higher limit of the pressure we are sending into the controller
+        if self.P_des > 13.5:
+            self.P_des = 13.5      
         
         # Turn float pressure into strings of right format to send to Adruino
         self.P_des = round(self.P_des, 2)       # round desired pressure to 2 decimal points
+        lessThanTen = False                     # checks to see if the P_des is less than 10
 
-        # TODO: Check the float to string conversion is correct
-        command = str(self.P_des)
+        if self.P_des < 10.0:
+            lessThanTen = True
+
+        command = str(self.P_des)               # turn float into a string
         command = command.replace('.', '')
 
-        if len(command) == 2:
+        if lessThanTen:                         # append leading zero to pressures less than 10 psi
             command = '0' + command
 
-        if len(command) == 3:
+        if len(command) == 3:                   # add following zero if we are missing the second decimal point
             command = command + '0'
 
         # Send over desired pressure to Arduino
