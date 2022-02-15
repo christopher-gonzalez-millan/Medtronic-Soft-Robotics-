@@ -4,7 +4,7 @@ import time
 import serial.tools.list_ports
 import threading
 
-
+stabilizationTime = 0.1
 class globalVars():
     pass
 
@@ -13,6 +13,7 @@ G.lock = threading.Lock() #not really necessary in this case, but useful none th
 G.value = 0
 G.kill = False
 G.zdes = None
+G.gainValue = 1
 
 """Setup Variables
 
@@ -43,7 +44,7 @@ def floatToCommand(float):
 
 def one_D_feedback(z_des, z_act):
     # define the proportional gain
-    k_p = 1
+    k_p = G.gainValue
 
     # Calculate the error between current and desired positions
     epsi_z = z_des - z_act
@@ -63,25 +64,32 @@ def one_D_feedback(z_des, z_act):
 
     return P_des
 
-def runFeedback():
+def runFeedback(des):
     while not G.kill:
-        try:
-            position = ndi.getPosition()
-            pressure =  one_D_feedback(G.zdes, position.deltaZ)
-            pressure = round(pressure,2)
-            pressure = floatToCommand(pressure)
-            bytesSent = ser.write(pressure.encode('utf-8'))
-            #time.sleep(stabilizationTime)
+        if des != None:
 
-        except:
-            print("There was an issue with NDISensor's parser")
+            try:
+                position = ndi.getPosition()
+                print("Current Position: {}".format(position.deltaX))
+                pressure =  one_D_feedback(des, position.deltaX)
+                pressure = round(pressure,2)
+                pressure = floatToCommand(pressure)
+                bytesSent = ser.write(pressure.encode('utf-8'))
+                time.sleep(stabilizationTime)
+
+            except:
+                print("There was an issue with NDISensor's parser")
+                #ndi.cleanup()
+
+        
 
 
-t1 = threading.Thread(target=runFeedback)
+t1 = threading.Thread(target=runFeedback, args=(G.zdes,))
 t1.start()
 
 def askInput():
-    userInput = input('Desire Position')
+    
+    userInput = input('Desire Position: ')
 
     if userInput =="quit" or userInput == "q":
         print("Exiting")
@@ -91,10 +99,13 @@ def askInput():
         return False
 
     if 'g' in userInput:
-        gainValue = float(userInput.replace('g', ''))
+        G.gainValue = float(userInput.replace('g', ''))
+        print("recivie gain of {}".format(G.gainValue))
+
 
     elif userInput:
         G.zdes = userInput
+        print("recivie positon of {}".format(userInput))
 
     return True
 
