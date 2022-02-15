@@ -118,6 +118,7 @@ class Input(threading.Thread):
             if userInput =="quit" or userInput == "q":
                 print("Exiting")
                 ser.close()
+                quit()
                 return False
 
             if 'g' in userInput:
