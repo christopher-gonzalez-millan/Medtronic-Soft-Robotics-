@@ -1,5 +1,5 @@
 import NDISensor
-import serial
+import serial as pys
 import time
 import csv
 import datetime
@@ -10,18 +10,18 @@ import os
 These will need to be change for diffretnt expirment setups
 """
 #output file
-fileName  = datetime.datetime.now().strftime('%m/%d/%Y_%H:%M:%S')
+fileName  = datetime.datetime.now().strftime('%m-%d-%Y_%H:%M:%S') + '.csv'
 headerRow = ['Time', 'Theoretical PSI', 'Actual PSi', 'X Position', 'Y Position' , 'Z Position']
 currentDirectory = os.getcwd()
 outputDirectory = os.path.join(currentDirectory, fileName)
 
-
 #soft robot
 deafaultPressure = 12.0
 pressureDelta = 0.1
-stabilizationTime = 1 #this number is in seconds.
-maxPressure = 20.0
-minPressure = 8.0
+stabilizationTime = 5 #this number is in seconds.
+maxPressure = 13.2
+minPressure = 11.0
+readCommand = '9999'
 
 
 """Setup Variables
@@ -32,42 +32,51 @@ ndi = NDISensor.NDISensor()
 ser = pys.Serial()
 ser.baudrate = 115200
 #TODO find a way to automate finding the COM port.
-ser.port = 'COM4'
+ser.port = 'COM3'
 
 """Helper Functions:
 """
 def floatToCommand(float):
+    float = round(float, 2)       # round desired pressure to 2 decimal points
+    lessThanTen = False                     # checks to see if the P_des is less than 10
+
+    if float < 10.0:
+        lessThanTen = True
+
     temp = str(float)
     temp = temp.replace('.', '')
 
-    if len(temp) == 2:
+    if lessThanTen:
         temp = '0' + temp
 
     if len(temp) == 3:
         temp = temp + '0'
 
-    return command
+    return temp
 
 
 """ This should be MAIN but im lazy right now.
 """
 # Open and check serial
 ser.open()
+time.sleep(5)
 if (not ser.is_open):
     print("Serial Port Could not be Opened")
     quit()
 
-with open(outputDirectory, 'w', newline='') as csvfile:
-    writer = csv.DictWriter(csvfile, fieldnames=headerRow
+with open('test.csv', 'w', newline='') as csvfile:
+    writer = csv.DictWriter(csvfile, fieldnames=headerRow)
     writer.writeheader()
 
     #first set up expiremnt
     bytesSent = ser.write(floatToCommand(minPressure).encode('utf-8'))
     deafaultPressure = minPressure
+    print("pressure set at: {}".format(deafaultPressure))
     time.sleep(stabilizationTime)
 
 
     while(deafaultPressure < maxPressure):
+        print(1)
         tempData = {}
 
         #gather the current infromation about the current state of the robot
@@ -83,20 +92,29 @@ with open(outputDirectory, 'w', newline='') as csvfile:
             tempData['X Position'] = position.deltaX
             tempData['Y Position'] = position.deltaY
             tempData['Z Position'] = position.deltaZ
+            print(3)
+
+
+            #find what the actual psi of the system is
+            ser.write(readCommand.encode('utf-8'))# tell arduino we want a psi
+            time.sleep(0.1)
+            actualPSI = ser.readline().decode("utf-8")
+            print(actualPSI)
+            tempData['Actual PSi'] = actualPSI
+
+            print("writing data to CSv")
+            writer.writerow(tempData)
+
+
+            #change the state the robot is in
+            deafaultPressure += pressureDelta
+            bytesSent = ser.write(floatToCommand(deafaultPressure).encode('utf-8'))
+            time.sleep(stabilizationTime)
 
         except:
             print("There was an issue with NDISensor's parser")
 
-        #find what the actual psi of the system is
-        ser.write("9999".encode('utf-8')) # tell arduino we want a psi
-        actualPSI = ser.readline().decode("utf-8")
-        tempData['Actual PSi'] = actualPSI
 
-        #change the state the robot is in
-        deafaultPressure += pressureDelta
-        bytesSent = ser.write(floatToCommand(deafaultPressure).encode('utf-8'))
-        time.sleep(stabilizationTime)
-
-
-
+ser.write(floatToCommand(12.25).encode('utf-8'))
+print("Done collecting data")
 ser.close()
