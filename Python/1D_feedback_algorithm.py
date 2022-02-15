@@ -134,6 +134,9 @@ class controllerThread(threading.Thread):
         # perform 1D proportional control
         self.one_D_algorithm()
 
+        # send the desired pressure into Arduino
+        self.sendDesiredPressure()
+
     def getActualPressure(self):
         '''
         Obtains actual pressure from pressure sensor
@@ -160,6 +163,7 @@ class controllerThread(threading.Thread):
         '''
         Proportional feedback loop algorithm (includes our method and Shalom's del P)
         '''
+        # TODO: Figure out to obtain z_des and k_p from the user side of the code
         # Calculate the error between current and desired positions
         epsi_z = self.z_des - self.z_act
 
@@ -176,18 +180,30 @@ class controllerThread(threading.Thread):
         # P_des = P_o + del_P_des
         # del_P_act = P_des - P_act
     
-    def convertSendPressure(self):
+    def sendDesiredPressure(self):
         '''
-        convert P_des obtained from algorithm into something we can send into Arduino
+        convert P_des and send this pressure into the Arduino
         '''
         # ensure we only send four digits into Arduino
         if self.P_des >= 100:
-            self.P_des = 99.99
+            self.P_des = 99.98          # NOTE: 99.99 is reserved as the read pressure command
         
-        # 
+        # Turn float pressure into strings of right format to send to Adruino
         self.P_des = round(self.P_des, 2)       # round desired pressure to 2 decimal points
-        
 
+        # TODO: Check the float to string conversion is correct
+        command = str(self.P_des)
+        command = command.replace('.', '')
+
+        if len(command) == 2:
+            command = '0' + command
+
+        if len(command) == 3:
+            command = command + '0'
+
+        # Send over desired pressure to Arduino
+        global ser
+        bytesSent = ser.write(command.encode('utf-8'))
 
     def run(self):
         # target function of the thread class
