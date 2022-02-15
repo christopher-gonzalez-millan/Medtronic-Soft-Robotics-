@@ -35,14 +35,14 @@ class command:
 
 # <===================== Building GUI =====================>
 root = Tk()
-root.geometry("400x300")
+root.geometry("300x200")
 root.title('GUI')
 root['bg'] = '#0059b3'
 
-# Handling Arduino related commands from GUI
-def GUI_handleArduinoCommand():
-    global arduino_entry
-    newCmd = command("Arduino", arduino_entry.get(), 0)
+# <=============== Setting desired position ===============>
+def GUI_handleSetPositionCommand():
+    global position_entry
+    newCmd = command("EM_Sensor", "setPosition", float(position_entry.get()))
     # field1 = 0
     # field2 = 0
     # def cb(self):
@@ -52,25 +52,20 @@ def GUI_handleArduinoCommand():
     cmdQueue.put(newCmd)
 
 labelText=StringVar()
-labelText.set("Enter desired pressure [psi]:")
+labelText.set("Enter desired Z [mm]:")
 labelDir=Label(root, textvariable=labelText, height=1)
 labelDir.pack()
 
 #Create an Entry widget to accept User Input
-arduino_entry= Entry(root, width= 20)
-arduino_entry.focus_set()
-arduino_entry.pack()
-ttk.Button(root, text= "Send",width= 10, command=GUI_handleArduinoCommand).pack(pady=20)
+position_entry= Entry(root, width= 20)
+position_entry.focus_set()
+position_entry.pack()
+ttk.Button(root, text= "Send",width= 10, command=GUI_handleSetPositionCommand).pack(pady=(0,40))
 
-def GUI_handlePressureRead():
-    newCmd = command("Arduino", "read", 0)
-    cmdQueue.put(newCmd)
-
-ttk.Button(root, text= "Read Pressure from Arduino",width= 30, command=GUI_handlePressureRead).pack(pady=20)
-
-# Handling EM Sensor = realted commands from GUI
-def GUI_handleEMcommand():
-    newCmd = command("EM_Sensor", 0, 0)
+# <=============== Setting Gain ===============>
+def GUI_handleSetGainCommand():
+    global gain_entry
+    newCmd = command("EM_Sensor", "setGain", float(gain_entry.get()))
     # field1 = 0
     # field2 = 0
     # def cb(self):
@@ -79,7 +74,18 @@ def GUI_handleEMcommand():
     # newCmd.callback(cb)
     cmdQueue.put(newCmd)
 
-ttk.Button(root, text= "Read Position from EM Sensor",width= 30, command=GUI_handleEMcommand).pack(pady=20)
+labelText_gain=StringVar()
+labelText_gain.set("Enter Gain:")
+labelDir_gain=Label(root, textvariable=labelText_gain, height=1)
+labelDir_gain.pack()
+
+#Create an Entry widget to accept User Input
+gain_entry= Entry(root, width= 10)
+gain_entry.focus_set()
+gain_entry.pack()
+ttk.Button(root, text= "Send",width= 10, command=GUI_handleSetGainCommand).pack(pady=(0,20))
+
+
 # <==========================================================>
 
 class controllerThread(threading.Thread):
@@ -89,42 +95,30 @@ class controllerThread(threading.Thread):
     def __init__(self, name):
         threading.Thread.__init__(self)
         self.name = name
-        self.z_des = 0                  # stores the desired z position input by user
-        self.z_act = 0                  # actual z_position from EM sensor
-        self.k_p = 1                    # proportional controller gain
-        self.P_act = 0                  # actual pressure read from the pressure sensor
-        self.P_des = 12                 # desired pressure we're sending to the Arduino
+        self.z_des = 0.0                  # stores the desired z position input by user
+        self.z_act = 0.0                  # actual z_position from EM sensor
+        self.k_p = 1.0                    # proportional controller gain
+        self.P_act = 0.0                  # actual pressure read from the pressure sensor
+        self.P_des = 12.0                 # desired pressure we're sending to the Arduino
 
     def handleGUICommand(self, newCmd):
         '''
         Function to handle commands from the GUI.
         Takes place on controller thread
         '''
-             
-        if (newCmd.id == "Arduino"):
-            global ser
-            if (newCmd.field1 == "read"):
-                # Convert string to utf-8 and send over serial
-                command = "9999"
-                bytesSent = ser.write(command.encode('utf-8'))
-                time.sleep(.1)
-                temp = ser.readline().decode("utf-8")
-                print("Pressure: %(val)s" % {"val": temp.rstrip()})
-            else:
-                # Convert string to utf-8 and send over serial
-                bytesSent = ser.write(newCmd.field1.encode('utf-8'))
-        elif (newCmd.id == "EM_Sensor"):
-            # print("controller wants to read position")
-            global ndi
-            while True:
-                position = ndi.getPosition()
-                if position:
-                    print("Delta Z: ", position.deltaZ)
+        if (newCmd.id == "EM_Sensor"):
+            if (newCmd.field1 == "setPosition"):
+                self.z_des = newCmd.field2
+                print("\nCommand recieved to set position to ", self.z_des)
+            elif (newCmd.field1 == "setGain"):
+                self.k_p = newCmd.field2
+                print("\nCommand recieved to set gain to", self.k_p)
     
     def one_D_main(self):
         '''
         main function used in thread to perform 1D algorithm
         '''
+        print("\n")
         # get the actual pressure from the pressure sensor
         self.getActualPressure()
 
@@ -142,11 +136,11 @@ class controllerThread(threading.Thread):
         Obtains actual pressure from pressure sensor
         '''
         global ser
-        command = "9999"                                    # let the Arduino know we want to read a pressure value
+        command = "9999"                             # let the Arduino know we want to read a pressure value
         bytesSent = ser.write(command.encode('utf-8'))
         time.sleep(0.1)
-        self.P_act = ser.readline().decode('utf-8')
-        self.P_act = float(self.P_act)                      # convert pressures from string to float
+        self.P_act = float(ser.readline().decode('utf-8'))  # convert pressures from string to float
+        print("P_act: ", self.P_act)
 
     def getActualPosition(self):
         '''
@@ -158,17 +152,20 @@ class controllerThread(threading.Thread):
             if position:
                 self.z_act = position.deltaX
                 break
+        print("z_act: ", self.z_act)
 
     def one_D_algorithm(self):
         '''
         Proportional feedback loop algorithm (includes our method and Shalom's del P)
         '''
+        print("z_des: ", self.z_des)
         # TODO: Figure out to obtain z_des and k_p from the user side of the code
         # Calculate the error between current and desired positions
         epsi_z = self.z_des - self.z_act
 
         # Multiply by the proportional gain k_p
         self.P_des = self.k_p * epsi_z
+        print("P_des: ", self.P_des)
 
         # < ------- Our feedback method --------- >
         # del_P_des = k_p * epsi_z
@@ -185,12 +182,12 @@ class controllerThread(threading.Thread):
         convert P_des and send this pressure into the Arduino
         '''
         # lower limit of the pressure we are sending into the controller
-        if self.P_des < 9:
-            self.p_des = 9.0
+        if self.P_des < 9.0:
+            self.P_des = 9.0
 
         # higher limit of the pressure we are sending into the controller
-        if self.P_des > 13.5:
-            self.P_des = 13.5      
+        if self.P_des > 13.0:
+            self.P_des = 13.0      
         
         # Turn float pressure into strings of right format to send to Adruino
         self.P_des = round(self.P_des, 2)       # round desired pressure to 2 decimal points
@@ -210,19 +207,27 @@ class controllerThread(threading.Thread):
 
         # Send over desired pressure to Arduino
         global ser
+        print("Writing command to arduino: ", command.encode('utf-8'))
         bytesSent = ser.write(command.encode('utf-8'))
 
     def run(self):
         # target function of the thread class
+        print("Waiting for Arduino Initialization...")
+        time.sleep(6)
+
         try:            
             while True:
                 if (cmdQueue.empty() == False):
                     newCmd = cmdQueue.get()
                     self.handleGUICommand(newCmd)
-                    # time.sleep(1)
+                
                 self.one_D_main() 
+                # time.sleep(.1)
+
         finally:
             global ser
+            command = "1225"
+            bytesSent = ser.write(command.encode('utf-8'))
             print('Controller thread teminated')
             ser.close()
           

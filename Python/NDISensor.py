@@ -76,7 +76,7 @@ class NDISensor:
             result = ndiProbe(self.name ) #Returns 257 if port not found, otherwise returns 1
             
             if result == NDI_OKAY: #NDI_OKAY == 0
-                print(port_no)
+                # print(port_no)
                 break
                 
         if result != NDI_OKAY:
@@ -101,7 +101,6 @@ class NDISensor:
         
                 if(To_Initialized == '00'):
                     To_enable = ndiCommand(self.device, 'PHSR:03')
-                    print(To_enable[2:4])
                     if(To_enable == '00'):
                         break
                     else:
@@ -110,8 +109,8 @@ class NDISensor:
                         else:
                             ndiCommand(self.device, 'PENA:{}{}'.format(To_enable[2:4], 'D'))
                         
-                        print("Success:")
-                        print(ndiCommand(self.device, 'PHINF:{}{}'.format(To_enable[2:4], '0001')))
+                        print("Initialized EM Sensor Port: ", To_enable[2:4])
+                        # print(ndiCommand(self.device, 'PHINF:{}{}'.format(To_enable[2:4], '0001')))
                         num_setup_complete += 1
                 else:
                     #There needs to be ports to be initialized
@@ -135,7 +134,7 @@ class NDISensor:
             self.device,
             'COMM:{:d}{:03d}{:d}'.format(NDI_115200, NDI_8N1, NDI_NOHANDSHAKE)
         )
-        print(reply)
+        # print(reply)
 
     def checkCommunication(self):
         #Ensures the system configuuration was determine successfully
@@ -146,14 +145,17 @@ class NDISensor:
                 'Error when sending command: '
                 '{}'.format(ndiErrorString(error))
             )
-        print(reply)
+        # print(reply)
                 
     def startTracking(self):
         '''
         Funciton to start tracking with ports currently set up
         '''
         reply = ndiCommand(self.device, 'TSTART:')
-        print(reply)
+        if reply == "OKAY":
+            print("EM Sensor Tracking Started Successfully")
+        else:
+            print("ERROR with starting tracker (TSTART)")
 
 
     def stopTracking(self):
