@@ -1,7 +1,8 @@
 '''
- * @file    one_channel_prop_control.py
+ * @file    basic_GUI_Control.py
  * @author  CU Boulder Medtronic Team 7
- * @brief   Basic 1D proportional controller
+ * @brief   Integrates Arduino with EM sensor in one python script.
+            Provides GUI with simple commands like read pressure, write pressure, and read position
 '''
 import NDISensor
 import threading
@@ -114,6 +115,7 @@ class controllerThread(threading.Thread):
                 position = ndi.getPosition()
                 if position:
                     print("Delta Z: ", position.deltaZ)
+                    break
     
     def one_D_feedback(self, z_des, z_act, P_act, P_o):
         # define the proportional gain
