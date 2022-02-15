@@ -30,7 +30,7 @@
 
 // Serial related defines
 #define EXPECTED_MSG_LENGTH (4*(CHANNEL_1 + CHANNEL_2 + CHANNEL_3)) // 4 bytes per channel
-#define COMMAND_FREQUENCY_MS 100 // milliseconds
+#define COMMAND_FREQUENCY_MS 10 // milliseconds
 
 // Enabled when pressure sensor functions are defined here in file
 #define LOCAL_PRESSURE_SENSOR_FUNCTIONS

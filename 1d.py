@@ -1,4 +1,5 @@
-import serial
+import NDISensor
+import serial as pys
 import time
 import serial.tools.list_ports
 import threading
@@ -21,7 +22,7 @@ ndi = NDISensor.NDISensor()
 ser = pys.Serial()
 ser.baudrate = 115200
 #TODO find a way to automate finding the COM port.
-ser.port = 'COM4
+ser.port = 'COM3'
 # Open and check serial
 ser.open()
 if (not ser.is_open):
@@ -38,7 +39,7 @@ def floatToCommand(float):
     if len(temp) == 3:
         temp = temp + '0'
 
-    return command
+    return temp
 
 def one_D_feedback(z_des, z_act):
     # define the proportional gain
@@ -66,9 +67,9 @@ def runFeedback():
     while not G.kill:
         try:
             position = ndi.getPosition()
-            pressure =  one_D_feedback(z_des, position.deltaZ)
+            pressure =  one_D_feedback(G.zdes, position.deltaZ)
             pressure = round(pressure,2)
-            pressure = floatToCommand(deafaultPressure)
+            pressure = floatToCommand(pressure)
             bytesSent = ser.write(pressure.encode('utf-8'))
             #time.sleep(stabilizationTime)
 
@@ -76,7 +77,7 @@ def runFeedback():
             print("There was an issue with NDISensor's parser")
 
 
-t1 = threading.Thread(target=printer)
+t1 = threading.Thread(target=runFeedback)
 t1.start()
 
 def askInput():
