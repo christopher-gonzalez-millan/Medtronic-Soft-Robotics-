@@ -91,6 +91,9 @@ class controllerThread(threading.Thread):
         self.name = name
         self.z_des = 0                  # stores the desired z position input by user
         self.z_act = 0                  # actual z_position from EM sensor
+        self.k_p = 1                    # proportional controller gain
+        self.P_act = 0                  # actual pressure read from the pressure sensor
+        self.P_des = 12                 # desired pressure we're sending to the Arduino
 
     def handleGUICommand(self, newCmd):
         '''
@@ -119,31 +122,49 @@ class controllerThread(threading.Thread):
                     print("Delta Z: ", position.deltaZ)
     
     def one_D_main(self):
-        # global ser
-        # command = "9999"    # let the Arduino know we want to read a pressure value
-        # bytesSent = ser.write(command.encode('utf-8'))
-        # time.sleep(0.1)
-        # temp = ser.readline().decode('utf-8')
+        '''
+        main function used in thread to perform 1D algorithm
+        '''
+        # get the actual pressure from the pressure sensor
+        self.getActualPressure()
 
+        # get actual position from EM sensor
+        self.getActualPosition()
+            
+        # perform 1D proportional control
+        self.one_D_algorithm()
+
+    def getActualPressure(self):
+        '''
+        Obtains actual pressure from pressure sensor
+        '''
+        global ser
+        command = "9999"                                    # let the Arduino know we want to read a pressure value
+        bytesSent = ser.write(command.encode('utf-8'))
+        time.sleep(0.1)
+        self.P_act = ser.readline().decode('utf-8')
+        self.P_act = float(self.P_act)                      # convert pressures from string to float
+
+    def getActualPosition(self):
+        '''
+        Obtains actual position reading from EM sensor
+        '''
         global ndi
         while True:
             position = ndi.getPosition()
             if position:
-                self.z_act = position.deltaZ
+                self.z_act = position.deltaX
                 break
-            
-        self.one_D_algorithm(self)
 
-    def one_D_algorithm(self, P_act, P_o):
-        # define the proportional gain
-        k_p = 1
-        z_des = self.z_des
-
+    def one_D_algorithm(self):
+        '''
+        Proportional feedback loop algorithm (includes our method and Shalom's del P)
+        '''
         # Calculate the error between current and desired positions
-        epsi_z = z_des - z_act
+        epsi_z = self.z_des - self.z_act
 
         # Multiply by the proportional gain k_p
-        P_des = k_p * epsi_z
+        self.P_des = self.k_p * epsi_z
 
         # < ------- Our feedback method --------- >
         # del_P_des = k_p * epsi_z
@@ -154,8 +175,19 @@ class controllerThread(threading.Thread):
         # del_P_des = k_p*epsi_z
         # P_des = P_o + del_P_des
         # del_P_act = P_des - P_act
+    
+    def convertSendPressure(self):
+        '''
+        convert P_des obtained from algorithm into something we can send into Arduino
+        '''
+        # ensure we only send four digits into Arduino
+        if self.P_des >= 100:
+            self.P_des = 99.99
+        
+        # 
+        self.P_des = round(self.P_des, 2)       # round desired pressure to 2 decimal points
+        
 
-        return P_des
 
     def run(self):
         # target function of the thread class
@@ -165,8 +197,7 @@ class controllerThread(threading.Thread):
                     newCmd = cmdQueue.get()
                     self.handleGUICommand(newCmd)
                     # time.sleep(1)
-                
-            
+                self.one_D_main() 
         finally:
             global ser
             print('Controller thread teminated')
@@ -187,13 +218,6 @@ class controllerThread(threading.Thread):
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
             print('Exception raise failure') 
-        
-# < =============================== Distance vector function ================================== >
-def distance_calc(x_base, y_base, z_base, x_tip, y_tip, z_tip):
-    x_act = x_tip - x_base
-    y_act = y_tip - y_base
-    z_act = z_tip - z_base
-# < =========================================================================================== >
 
 def main():
     '''
