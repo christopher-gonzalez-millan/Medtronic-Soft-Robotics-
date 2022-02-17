@@ -137,10 +137,12 @@ class controllerThread(threading.Thread):
         '''
         global ser
         command = "9999"                             # let the Arduino know we want to read a pressure value
-        bytesSent = ser.write(command.encode('utf-8'))
-        time.sleep(0.1)
-        self.P_act = float(ser.readline().decode('utf-8'))  # convert pressures from string to float
-        print("P_act: ", self.P_act)
+        ser.write(command.encode('utf-8'))
+        while True:
+            if(ser.in_waiting > 4):
+                self.P_act = float(ser.readline().decode('utf-8'))  # convert pressures from string to float
+                print("P_act: ", self.P_act)
+                break
 
     def getActualPosition(self):
         '''
@@ -162,14 +164,15 @@ class controllerThread(threading.Thread):
         # TODO: Figure out to obtain z_des and k_p from the user side of the code
         # Calculate the error between current and desired positions
         epsi_z = self.z_des - self.z_act
+        print("epsi_z:", epsi_z)
 
         # Multiply by the proportional gain k_p
-        self.P_des = self.k_p * epsi_z
-        print("P_des: ", self.P_des)
+        # self.P_des = self.k_p * epsi_z
+        # print("P_des: ", self.P_des)
 
         # < ------- Our feedback method --------- >
-        # del_P_des = k_p * epsi_z
-        # P_des = P_act + del_P_des
+        del_P_des = self.k_p * epsi_z
+        self.P_des = self.P_act + del_P_des
 
         # < -------- Shalom delta P method ------- >
         # Figure out how to utilize del_P_act instead of P_des (on Arduino side?)
@@ -186,8 +189,8 @@ class controllerThread(threading.Thread):
             self.P_des = 9.0
 
         # higher limit of the pressure we are sending into the controller
-        if self.P_des > 13.0:
-            self.P_des = 13.0      
+        if self.P_des > 13.25:
+            self.P_des = 13.25      
         
         # Turn float pressure into strings of right format to send to Adruino
         self.P_des = round(self.P_des, 2)       # round desired pressure to 2 decimal points
@@ -208,13 +211,14 @@ class controllerThread(threading.Thread):
         # Send over desired pressure to Arduino
         global ser
         print("Writing command to arduino: ", command.encode('utf-8'))
-        bytesSent = ser.write(command.encode('utf-8'))
+        ser.write(command.encode('utf-8'))
+        while True:
+            if (ser.in_waiting == 4): # and ((ser.readline().decode('utf-8')).rstrip() == "rx")):
+                if ((ser.readline().decode('utf-8')).rstrip() == "rx"):
+                    break
 
     def run(self):
         # target function of the thread class
-        print("Waiting for Arduino Initialization...")
-        time.sleep(6)
-
         try:            
             while True:
                 if (cmdQueue.empty() == False):
@@ -222,12 +226,14 @@ class controllerThread(threading.Thread):
                     self.handleGUICommand(newCmd)
                 
                 self.one_D_main() 
-                # time.sleep(.1)
+                time.sleep(.07)
 
         finally:
+            # Controller Terminating
             global ser
+            # Send command to reset to default pressure before terminating
             command = "1225"
-            bytesSent = ser.write(command.encode('utf-8'))
+            ser.write(command.encode('utf-8'))
             print('Controller thread teminated')
             ser.close()
           
@@ -261,6 +267,17 @@ def main():
     if (ser.is_open != True):
         print("Could not open serial")
         quit()
+
+    # Give time for Arduino to use serial line to setup pressure sensors
+    print("Waiting for Arduino Initialization...")
+    time.sleep(10) # TODO: try to remove
+    while True:
+        if(ser.in_waiting > 6):
+            arduinoSetup = ser.readline().decode('utf-8')
+            print(arduinoSetup)
+            if(arduinoSetup.rstrip() == "Arduino Setup Complete"):
+                print("Arduino Serial Established")
+                break
 
     # Spin up controller
     t1 = controllerThread('Thread 1')
