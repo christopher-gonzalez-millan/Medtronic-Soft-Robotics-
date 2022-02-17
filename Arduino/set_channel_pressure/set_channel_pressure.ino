@@ -30,7 +30,7 @@
 
 // Serial related defines
 #define EXPECTED_MSG_LENGTH (4*(CHANNEL_1 + CHANNEL_2 + CHANNEL_3)) // 4 bytes per channel
-#define COMMAND_FREQUENCY_MS 100 // milliseconds
+#define COMMAND_FREQUENCY_MS 10 // milliseconds
 
 // Enabled when pressure sensor functions are defined here in file
 #define LOCAL_PRESSURE_SENSOR_FUNCTIONS
@@ -91,6 +91,8 @@ void setup() {
         pinMode(channels[cNum].positiveSolenoid, OUTPUT);
         pinMode(channels[cNum].negativeSolenoid, OUTPUT);
     }
+
+    Serial.println("Arduino Setup Complete");
 }
 
 /*
@@ -102,25 +104,21 @@ void loop() {
 
     // Read in serial command if needed...
     // Arduino serial buffer holds 64 bytes
-    if (((currentTime - lastCommandTime) >= COMMAND_FREQUENCY_MS) &&
-        (Serial.available() >= EXPECTED_MSG_LENGTH))
+    // Check for new command...
+    // Contains desired PSI (implied decimal XX.XX) for channels that are enabled
+    if (Serial.available() >= EXPECTED_MSG_LENGTH)
     {
-        // Check for new command...
-        // Contains desired PSI (implied decimal XX.XX) for channels that are enabled
-        if (Serial.available() >= EXPECTED_MSG_LENGTH)
-        {
-            handleCommand();
+        handleCommand();
 
-            // Flush rest of input buffer
-            while(Serial.available()) 
-            {
-                char t = Serial.read();
-            }
+        // Flush rest of input buffer
+        // while(Serial.available()) 
+        // {
+        //     char t = Serial.read();
+        // }
 
-            // Update last command time
-            lastCommandTime = millis();
-        }
-     }
+        // Update last command time
+        // lastCommandTime = millis();
+    }
 
     // Update I/O if needed based on last command
     for (int8_t cNum = 0; cNum < NUM_CHANNELS; cNum++)
@@ -172,13 +170,17 @@ void loop() {
             switch (channels[cNum].currentState)
             {
                 case INFLATE:
-                    // Solenoids
-                    digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_OPEN);
-                    digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
-                    
                     // Pumps
                     analogWrite(channels[cNum].positivePump, PUMP_PWM_POS);
                     analogWrite(channels[cNum].negativePump, PUMP_OFF);
+
+                    // Solenoids
+                    // digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
+                    // delay(1);
+                    digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_OPEN);
+                    // delay(4);
+                    digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
+                    
                     break; 
                     
                 case HOLD:
@@ -199,7 +201,7 @@ void loop() {
                         digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_OPEN);
                         delay(2);
                         digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
-                        delay(6);
+                        delay(5);
                     }
                     else
                     {
@@ -251,6 +253,7 @@ void handleCommand(void)
             {
                 // Set pressure command
                 channels[cNum].desiredPressure = ((String(pressure)).toFloat());
+                Serial.println("rx");
             }
         }
     }
