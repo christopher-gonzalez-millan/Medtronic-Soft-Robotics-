@@ -10,17 +10,17 @@ import os
 These will need to be change for diffretnt expirment setups
 """
 #output file
-fileName  = datetime.datetime.now().strftime('%m-%d-%Y_%H:%M:%S') + '.csv'
-headerRow = ['Time', 'Theoretical PSI', 'Actual PSi', 'X Position', 'Y Position' , 'Z Position']
-currentDirectory = os.getcwd()
-outputDirectory = os.path.join(currentDirectory, fileName)
+print('Please enter file name: ')
+fileName = input()
+fileName  = fileName + '.csv'
+headerRow = ['Time', 'Theoretical PSI', 'Actual PSI', 'X Position', 'Y Position' , 'Z Position']
 
 #soft robot
-deafaultPressure = 12.0
-pressureDelta = 0.1
-stabilizationTime = 5 #this number is in seconds.
-maxPressure = 13.2
-minPressure = 11.0
+deafaultPressure = 12.25
+pressureDelta = .05
+stabilizationTime = 15 #this number is in seconds.
+maxPressure = 13.25
+minPressure = 11.5
 readCommand = '9999'
 
 
@@ -64,7 +64,7 @@ if (not ser.is_open):
     print("Serial Port Could not be Opened")
     quit()
 
-with open('test.csv', 'w', newline='') as csvfile:
+with open(fileName, 'w', newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=headerRow)
     writer.writeheader()
 
@@ -76,13 +76,13 @@ with open('test.csv', 'w', newline='') as csvfile:
 
 
     while(deafaultPressure < maxPressure):
-        print(1)
         tempData = {}
 
         #gather the current infromation about the current state of the robot
 
         #what the PSI should be
         tempData['Theoretical PSI'] = deafaultPressure
+        print('Desired Pressure: ', deafaultPressure)
         # time of this state
         tempData['Time'] = datetime.datetime.now().strftime('%H:%M:%S')
 
@@ -92,19 +92,17 @@ with open('test.csv', 'w', newline='') as csvfile:
             tempData['X Position'] = position.deltaX
             tempData['Y Position'] = position.deltaY
             tempData['Z Position'] = position.deltaZ
-            print(3)
-
 
             #find what the actual psi of the system is
             ser.write(readCommand.encode('utf-8'))# tell arduino we want a psi
-            time.sleep(0.1)
-            actualPSI = ser.readline().decode("utf-8")
-            print(actualPSI)
-            tempData['Actual PSi'] = actualPSI
+            time.sleep(0.2)
+            actualPSI = float(ser.readline().decode("utf-8"))
+            tempData['Actual PSI'] = actualPSI
+            print('Actual Pressure: ', actualPSI)
+            print('x position: ', position.deltaX)
 
             print("writing data to CSv")
             writer.writerow(tempData)
-
 
             #change the state the robot is in
             deafaultPressure += pressureDelta

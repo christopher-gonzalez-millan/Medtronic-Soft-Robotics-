@@ -17,7 +17,7 @@
 #define CHANNEL_1 OFF
 #define CHANNEL_2 ON
 #define CHANNEL_3 OFF
-#define DEFAULT_PRESSURE 12.0
+#define DEFAULT_PRESSURE 12.25
 #define PRESSURE_HOLD_TOLERANCE 0.05
 #define PRESSURE_TOLERANCE 0.01
 
@@ -173,8 +173,12 @@ void loop() {
             {
                 case INFLATE:
                     // Solenoids
+                    digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
+                    delay(1);
                     digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_OPEN);
+                    delay(50);
                     digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
+                    
                     
                     // Pumps
                     analogWrite(channels[cNum].positivePump, PUMP_PWM_POS);
