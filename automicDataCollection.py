@@ -18,7 +18,7 @@ headerRow = ['Time', 'Theoretical PSI', 'Actual PSI', 'X Position', 'Y Position'
 #soft robot
 deafaultPressure = 12.25
 pressureDelta = .05
-stabilizationTime = 15 #this number is in seconds.
+stabilizationTime = 10 #this number is in seconds.
 maxPressure = 13.25
 minPressure = 11.5
 readCommand = '9999'

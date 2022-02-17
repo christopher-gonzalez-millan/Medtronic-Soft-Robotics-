@@ -5,7 +5,7 @@ clc
 close all
 
 %% Import the data from spreadsheet
-[time, P_input, P_sensor, x_EM, y_EM, z_EM] = readvars('test.csv');
+[time, P_input, P_sensor, x_EM, y_EM, z_EM] = readvars('vertAutoTest.csv');
 %% Flip the x-values for plotting
 x_EM = -1*x_EM;
 
