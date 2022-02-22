@@ -16,7 +16,7 @@ import logging
 
 # logging.basicConfig(level = logging.DEBUG)
 logging.basicConfig(filename = 'data.log', level = logging.WARNING, 
-    format = '%(asctime)s:%(levelname)s:%(message)s;')
+    format = '%(asctime)s,%(message)s')
 
 # Init EM Nav and Arduino
 ndi = NDISensor.NDISensor()
@@ -189,7 +189,7 @@ class controllerThread(threading.Thread):
         self.sendDesiredPressure()
 
         # Log all control variables if needed
-        logging.info(';%.3f;%.3f;%.3f;%.3f;%.3f' % (z_des, z_act, P_des, P_act, k_p))
+        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f' % (z_des, z_act, P_des, P_act, k_p))
 
     def one_D_algorithm(self):
         '''
