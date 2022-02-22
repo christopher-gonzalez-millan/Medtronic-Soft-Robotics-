@@ -195,7 +195,7 @@ class controllerThread(threading.Thread):
         '''
         Proportional feedback loop algorithm (includes our method and Shalom's del P)
         '''
-        global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i
+        global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i, k_i_wind
 
         # Calculate the error between current and desired positions
         epsi_z = z_des - z_act
@@ -205,7 +205,7 @@ class controllerThread(threading.Thread):
 
         # < -------- Shalom P_absolute method --------- >
         # Utilize the proportional and integral controller values for P_des
-        # P_des = k_p*epsi_z + k_i*int_sum
+        P_des = k_p*epsi_z + k_i*int_sum
 
         # logging.debug("P_des: ", self.P_des)
 
@@ -218,6 +218,10 @@ class controllerThread(threading.Thread):
         # del_P_des = k_p*epsi_z
         # P_des = P_o + del_P_des
         # del_P_act = P_des - P_act
+
+        # Check for windup of the integrator 
+        if (P_des >= 13.25) or (P_des <= 9.0):
+            P_des = k_p*epsi_z
 
         # Update the error value for next iteration of epsi_z_prev
         epsi_z_prev = epsi_z
