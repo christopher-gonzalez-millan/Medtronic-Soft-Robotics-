@@ -28,6 +28,10 @@ z_act = 0.0     # actual z_position from EM sensor
 k_p = .015       # proportional controller gain
 P_act = 0.0     # actual pressure read from the pressure sensor
 P_des = 12.0    # desired pressure we're sending to the Arduino
+dT = 0.125      # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value
+int_sum = 0.0    # sum of the integral term # TODO: figure out if this should be a global value
+epsi_z_prev = 0.0 # error in z for the previous time step # TODO: figure out if this should be a global value
+k_i = 0.0         # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -191,23 +195,32 @@ class controllerThread(threading.Thread):
         '''
         Proportional feedback loop algorithm (includes our method and Shalom's del P)
         '''
-        global z_des, z_act, P_des, P_act, k_p
+        global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i
 
         # Calculate the error between current and desired positions
         epsi_z = z_des - z_act
 
-        # Multiply by the proportional gain k_p
-        # self.P_des = self.k_p * epsi_z
+        # Calculate the integral sum
+        int_sum = int_sum + 0.5*(epsi_z + epsi_z_prev)*dT
+
+        # < -------- Shalom P_absolute method --------- >
+        # Utilize the proportional and integral controller values for P_des
+        # P_des = k_p*epsi_z + k_i*int_sum
+
         # logging.debug("P_des: ", self.P_des)
 
         # < ------- Our feedback method --------- >
-        del_P_des = k_p * epsi_z
-        P_des = P_act + del_P_des
+        # del_P_des = k_p * epsi_z + k_i*(int_sum)
+        # P_des = P_act + del_P_des
+
         # < -------- Shalom delta P method ------- >
         # Figure out how to utilize del_P_act instead of P_des (on Arduino side?)
         # del_P_des = k_p*epsi_z
         # P_des = P_o + del_P_des
         # del_P_act = P_des - P_act
+
+        # Update the error value for next iteration of epsi_z_prev
+        epsi_z_prev = epsi_z
     
     def sendDesiredPressure(self):
         '''
