@@ -67,45 +67,55 @@ class GUI:
         self.position_entry.bind("<Return>", self.GUI_handleSetPositionCommand)
 
         # <=== ROW 2 ===>
-        # Text label for gain entry
-        gain_label = ttk.Label(master, text = "Enter Gain:")
-        gain_label.grid(row = 2, column = 0, sticky = W, pady = 2, padx = (30,0))
+        # Text label for proportional gain entry
+        kp_label = ttk.Label(master, text = "Enter kp:")
+        kp_label.grid(row = 2, column = 0, sticky = W, pady = 2, padx = (30,0))
         #Create an Entry widget to accept User Input
-        self.gain_entry = ttk.Entry(master, width= 10)
-        self.gain_entry.grid(row = 2, column = 1, sticky = W, pady = 2)
-        self.gain_entry.bind("<Return>", self.GUI_handleSetGainCommand)
+        self.kp_entry = ttk.Entry(master, width= 10)
+        self.kp_entry.grid(row = 2, column = 1, sticky = W, pady = 2)
+        self.kp_entry.bind("<Return>", lambda: self.GUI_handleSetGainCommand("kp"))
+
+        # <=== ROW 3 ===>
+        # Text label for integral gain entry
+        ki_label = ttk.Label(master, text = "Enter ki:")
+        ki_label.grid(row = 3, column = 0, sticky = W, pady = 2, padx = (30,0))
+        #Create an Entry widget to accept User Input
+        self.ki_entry = ttk.Entry(master, width= 10)
+        self.ki_entry.grid(row = 3, column = 1, sticky = W, pady = 2)
+        self.ki_entry.bind("<Return>", lambda: self.GUI_handleSetGainCommand("ki"))
+
 
         # Diplaying data
         display_label = ttk.Label(master, text = "Press/hold enter to display")
-        display_label.grid(row = 3, column = 0, sticky = W, pady = (20,2), padx = (2,0))
+        display_label.grid(row = 4, column = 0, sticky = W, pady = (20,2), padx = (2,0))
         self.display_entry = ttk.Entry(master, width= 1)
-        self.display_entry.grid(row = 3, column = 1, sticky = W, pady = (20,2))
+        self.display_entry.grid(row = 4, column = 1, sticky = W, pady = (20,2))
         self.display_entry.bind("<Return>", self.GUI_handleDataDisplay)
 
         self.z_des_label = ttk.Label(master, text = "Z desired: ")
-        self.z_des_label.grid(row = 4, column = 0, sticky = W, pady = 2, padx = (30,0))
+        self.z_des_label.grid(row = 5, column = 0, sticky = W, pady = 2, padx = (30,0))
 
         self.z_act_label = ttk.Label(master, text = "Z actual: ")
-        self.z_act_label.grid(row = 5, column = 0, sticky = W, pady = 2, padx = (30,0))
+        self.z_act_label.grid(row = 6, column = 0, sticky = W, pady = 2, padx = (30,0))
 
         self.p_des_label = ttk.Label(master, text = "P desired: ")
-        self.p_des_label.grid(row = 6, column = 0, sticky = W, pady = 2, padx = (30,0))
+        self.p_des_label.grid(row = 7, column = 0, sticky = W, pady = 2, padx = (30,0))
 
         self.p_act_label = ttk.Label(master, text = "P actual: ")
-        self.p_act_label.grid(row = 7, column = 0, sticky = W, pady = 2, padx = (30,0))
+        self.p_act_label.grid(row = 8, column = 0, sticky = W, pady = 2, padx = (30,0))
 
         # Record data
         command_label = ttk.Label(master, text = "Data Recording")
-        command_label.grid(row = 8, column = 0, sticky = W, pady = (20,2), padx = (2,0))
+        command_label.grid(row = 9, column = 0, sticky = W, pady = (20,2), padx = (2,0))
         
         start_log_button = ttk.Button(master, text = "Start Logging", width = 12, command = lambda: self.GUI_handleLoggingCommand("start"))
-        start_log_button.grid(row = 9, column = 0, sticky = W, pady = 2, padx = (2,0))
+        start_log_button.grid(row = 10, column = 0, sticky = W, pady = 2, padx = (2,0))
 
         stop_log_button = ttk.Button(master, text = "Stop Logging", width = 12, command = lambda: self.GUI_handleLoggingCommand("stop"))
-        stop_log_button.grid(row = 9, column = 1, sticky = W, pady = 2, padx = (2,0))
+        stop_log_button.grid(row = 11, column = 1, sticky = W, pady = 2, padx = (2,0))
 
         clear_log_button = ttk.Button(master, text = "Clear Log File", width = 12, command = lambda: self.GUI_handleLoggingCommand("clear"))
-        clear_log_button.grid(row = 9, column = 2, sticky = W, pady = 2, padx = (50,0))
+        clear_log_button.grid(row = 12, column = 2, sticky = W, pady = 2, padx = (50,0))
         
 
     def GUI_handleSetPositionCommand(self, *args):
@@ -115,12 +125,16 @@ class GUI:
         newCmd = command("EM_Sensor", "setPosition", float(self.position_entry.get()))
         commandsFromGUI.put(newCmd)
 
-    def GUI_handleSetGainCommand(self, *args):
+    def GUI_handleSetGainCommand(self, gain):
         '''
         Handle setting the gain from the GUI
         '''
-        newCmd = command("EM_Sensor", "setGain", float(self.gain_entry.get()))
-        commandsFromGUI.put(newCmd)
+        if (gain == "kp"):
+            newCmd = command("EM_Sensor", "setKp", float(self.kp_entry.get()))
+            commandsFromGUI.put(newCmd)
+        elif (gain == "ki"):
+            newCmd = command("EM_Sensor", "setKi", float(self.ki_entry.get()))
+            commandsFromGUI.put(newCmd)
 
     def GUI_handleDataDisplay(self, *args):
         '''
@@ -189,7 +203,7 @@ class controllerThread(threading.Thread):
         self.sendDesiredPressure()
 
         # Log all control variables if needed
-        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f' % (z_des, z_act, P_des, P_act, k_p))
+        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (z_des, z_act, P_des, P_act, k_p, k_i))
 
     def one_D_algorithm(self):
         '''
@@ -210,8 +224,8 @@ class controllerThread(threading.Thread):
         # logging.debug("P_des: ", self.P_des)
 
         # < ------- Our feedback method --------- >
-        # del_P_des = k_p * epsi_z + k_i*(int_sum)
-        # P_des = P_act + del_P_des
+        del_P_des = k_p * epsi_z + k_i*(int_sum)
+        P_des = P_act + del_P_des
 
         # < -------- Shalom delta P method ------- >
         # Figure out how to utilize del_P_act instead of P_des (on Arduino side?)
@@ -246,15 +260,18 @@ class controllerThread(threading.Thread):
         Function to handle commands from the GUI.
         Takes place on controller thread
         '''
-        global z_des, k_p
+        global z_des, k_p, k_i
 
         if (newCmd.id == "EM_Sensor"):
             if (newCmd.field1 == "setPosition"):
                 z_des = newCmd.field2
                 logging.debug("\nCommand recieved to set position to ", z_des)
-            elif (newCmd.field1 == "setGain"):
+            elif (newCmd.field1 == "setKp"):
                 k_p = newCmd.field2
-                logging.debug("\nCommand recieved to set gain to", k_p)
+                logging.debug("\nCommand recieved to set proportional gain to", k_p)
+            elif (newCmd.field1 == "setKi"):
+                k_i = newCmd.field2
+                print("\nCommand recieved to set integral gain to", k_i)
     
 
     def get_id(self):
