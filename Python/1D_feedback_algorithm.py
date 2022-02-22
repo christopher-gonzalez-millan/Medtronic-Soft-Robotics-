@@ -223,6 +223,10 @@ class controllerThread(threading.Thread):
 
         # Calculate the integral sum
         int_sum = int_sum + 0.5*(epsi_z + epsi_z_prev)*dT
+        if int_sum > 10:
+            int_sum = 10
+        elif int_sum < -10:
+            int_sum = -10            
 
         # < -------- Shalom P_absolute method --------- >
         # Utilize the proportional and integral controller values for P_des
