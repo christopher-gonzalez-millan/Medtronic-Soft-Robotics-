@@ -24,8 +24,8 @@
 // I/O related defines
 #define SOLENOID_CLOSED LOW
 #define SOLENOID_OPEN HIGH
-#define PUMP_PWM_POS 100
-#define PUMP_PWM_NEG 100
+#define PUMP_PWM_POS 90
+#define PUMP_PWM_NEG 90
 #define PUMP_OFF 0
 
 // Serial related defines

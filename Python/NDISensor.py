@@ -160,6 +160,19 @@ class NDISensor:
         '''
         ndiClose(self.device)
 
+    
+    def getPositionInRange(self):
+        '''
+        Ask EM sensor to give you position until tools are both in range
+        '''
+        while True:
+            position = self.getPosition()
+            # print("getting pos")
+            if position:
+                break
+        return position
+
+    
     def getPosition(self):
         '''
         Recieve tool transformation from EM sensor
