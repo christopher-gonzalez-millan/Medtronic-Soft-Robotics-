@@ -31,7 +31,7 @@ P_des = 12.0    # desired pressure we're sending to the Arduino
 dT = 0.125      # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value
 int_sum = 0.0    # sum of the integral term # TODO: figure out if this should be a global value
 epsi_z_prev = 0.0 # error in z for the previous time step # TODO: figure out if this should be a global value
-k_i = 0.0         # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+k_i = 0.01         # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -50,7 +50,7 @@ class GUI:
     def __init__(self, master):
         self.master = master
         master.title('GUI')
-        master.geometry("400x300")
+        master.geometry("400x350")
         master['bg'] = '#474747'
 
         # <=== ROW 0 ===>
@@ -73,7 +73,7 @@ class GUI:
         #Create an Entry widget to accept User Input
         self.kp_entry = ttk.Entry(master, width= 10)
         self.kp_entry.grid(row = 2, column = 1, sticky = W, pady = 2)
-        self.kp_entry.bind("<Return>", lambda: self.GUI_handleSetGainCommand("kp"))
+        self.kp_entry.bind("<Return>", self.GUI_handleSetKpCommand)
 
         # <=== ROW 3 ===>
         # Text label for integral gain entry
@@ -82,7 +82,7 @@ class GUI:
         #Create an Entry widget to accept User Input
         self.ki_entry = ttk.Entry(master, width= 10)
         self.ki_entry.grid(row = 3, column = 1, sticky = W, pady = 2)
-        self.ki_entry.bind("<Return>", lambda: self.GUI_handleSetGainCommand("ki"))
+        self.ki_entry.bind("<Return>", self.GUI_handleSetKiCommand)
 
 
         # Diplaying data
@@ -104,18 +104,21 @@ class GUI:
         self.p_act_label = ttk.Label(master, text = "P actual: ")
         self.p_act_label.grid(row = 8, column = 0, sticky = W, pady = 2, padx = (30,0))
 
+        self.int_sum_label = ttk.Label(master, text = "int_sum : ")
+        self.int_sum_label.grid(row = 9, column = 0, sticky = W, pady = 2, padx = (30,0))
+
         # Record data
         command_label = ttk.Label(master, text = "Data Recording")
-        command_label.grid(row = 9, column = 0, sticky = W, pady = (20,2), padx = (2,0))
+        command_label.grid(row = 10, column = 0, sticky = W, pady = (20,2), padx = (2,0))
         
         start_log_button = ttk.Button(master, text = "Start Logging", width = 12, command = lambda: self.GUI_handleLoggingCommand("start"))
-        start_log_button.grid(row = 10, column = 0, sticky = W, pady = 2, padx = (2,0))
+        start_log_button.grid(row = 11, column = 0, sticky = W, pady = 2, padx = (2,0))
 
         stop_log_button = ttk.Button(master, text = "Stop Logging", width = 12, command = lambda: self.GUI_handleLoggingCommand("stop"))
         stop_log_button.grid(row = 11, column = 1, sticky = W, pady = 2, padx = (2,0))
 
         clear_log_button = ttk.Button(master, text = "Clear Log File", width = 12, command = lambda: self.GUI_handleLoggingCommand("clear"))
-        clear_log_button.grid(row = 12, column = 2, sticky = W, pady = 2, padx = (50,0))
+        clear_log_button.grid(row = 11, column = 2, sticky = W, pady = 2, padx = (50,0))
         
 
     def GUI_handleSetPositionCommand(self, *args):
@@ -125,16 +128,19 @@ class GUI:
         newCmd = command("EM_Sensor", "setPosition", float(self.position_entry.get()))
         commandsFromGUI.put(newCmd)
 
-    def GUI_handleSetGainCommand(self, gain):
+    def GUI_handleSetKpCommand(self, *args):
         '''
         Handle setting the gain from the GUI
         '''
-        if (gain == "kp"):
-            newCmd = command("EM_Sensor", "setKp", float(self.kp_entry.get()))
-            commandsFromGUI.put(newCmd)
-        elif (gain == "ki"):
-            newCmd = command("EM_Sensor", "setKi", float(self.ki_entry.get()))
-            commandsFromGUI.put(newCmd)
+        newCmd = command("EM_Sensor", "setKp", float(self.kp_entry.get()))
+        commandsFromGUI.put(newCmd)
+
+    def GUI_handleSetKiCommand(self, *args):
+        '''
+        Handle setting the gain from the GUI
+        '''
+        newCmd = command("EM_Sensor", "setKi", float(self.ki_entry.get()))
+        commandsFromGUI.put(newCmd)
 
     def GUI_handleDataDisplay(self, *args):
         '''
@@ -146,6 +152,7 @@ class GUI:
         self.z_act_label.configure(text = "Z actual: " + str(round(z_act,3)))
         self.p_des_label.configure(text = "P desired: " + str(round(P_des,3)))
         self.p_act_label.configure(text = "P actual: " + str(round(P_act,3)))
+        self.int_sum_label.configure(text = "int_sum: " + str(round(int_sum,3)))
 
     def GUI_handleLoggingCommand(self, status):
         '''
@@ -209,7 +216,7 @@ class controllerThread(threading.Thread):
         '''
         Proportional feedback loop algorithm (includes our method and Shalom's del P)
         '''
-        global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i, k_i_wind
+        global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i
 
         # Calculate the error between current and desired positions
         epsi_z = z_des - z_act
@@ -219,7 +226,7 @@ class controllerThread(threading.Thread):
 
         # < -------- Shalom P_absolute method --------- >
         # Utilize the proportional and integral controller values for P_des
-        P_des = k_p*epsi_z + k_i*int_sum
+        # P_des = k_p*epsi_z + k_i*int_sum
 
         # logging.debug("P_des: ", self.P_des)
 
@@ -234,8 +241,8 @@ class controllerThread(threading.Thread):
         # del_P_act = P_des - P_act
 
         # Check for windup of the integrator 
-        if (P_des >= 13.25) or (P_des <= 9.0):
-            P_des = k_p*epsi_z
+        # if (P_des >= 13.25) or (P_des <= 9.0):
+        #     P_des = k_p*epsi_z
 
         # Update the error value for next iteration of epsi_z_prev
         epsi_z_prev = epsi_z
@@ -271,7 +278,7 @@ class controllerThread(threading.Thread):
                 logging.debug("\nCommand recieved to set proportional gain to", k_p)
             elif (newCmd.field1 == "setKi"):
                 k_i = newCmd.field2
-                print("\nCommand recieved to set integral gain to", k_i)
+                logging.debug("\nCommand recieved to set integral gain to", k_i)
     
 
     def get_id(self):
