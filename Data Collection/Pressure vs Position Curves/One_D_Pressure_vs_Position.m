@@ -5,7 +5,7 @@ clc
 close all
 
 %% Import the data from spreadsheet
-[P_input, P_sensor, x_EM, y_EM] = readvars('1D Pressure vs Pos.xlsx');
+[time, P_input, P_sensor, x_EM, y_EM, z_EM] = readvars('vertAutoTest.csv');
 %% Flip the x-values for plotting
 x_EM = -1*x_EM;
 
