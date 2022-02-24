@@ -1,5 +1,5 @@
 '''
- * @file    arduino_control.py
+ * @file    arduino_communication_header.py
  * @author  CU Boulder Medtronic Team 7
  * @brief   Methods to control Arduino communication
 '''

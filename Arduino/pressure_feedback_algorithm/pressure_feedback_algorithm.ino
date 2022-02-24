@@ -1,5 +1,5 @@
 /*
- * @file    set_channel_pressure
+ * @file    pressure_feedback_algorithm.ino
  * @author  CU Boulder Medtronic Team 7
  * @brief   Basic method to hit desired pressure in any channel
  */

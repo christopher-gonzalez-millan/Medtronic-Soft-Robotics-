@@ -1,5 +1,5 @@
 '''
- * @file    basic_GUI_Control.py
+ * @file    basic_GUI_Implementation.py
  * @author  CU Boulder Medtronic Team 7
  * @brief   Integrates Arduino with EM sensor in one python script.
             Provides GUI with simple commands like read pressure, write pressure, and read position

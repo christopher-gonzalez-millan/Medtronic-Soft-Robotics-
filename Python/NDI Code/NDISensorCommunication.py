@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-Spyder Editor
-
-This is a temporary script file.
-"""
 
 '''
- * @file    em_sensor_api.py
+ * @file    NDISensorCommunication.py
  * @author  CU Boulder Medtronic Team 7
  * @brief   Methods to control EM sensor via the NDI capi API
 '''
