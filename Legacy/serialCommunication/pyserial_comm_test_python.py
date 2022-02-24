@@ -1,3 +1,9 @@
+'''
+ * @file    pyserial_comm_test_python.py
+ * @author  CU Boulder Medtronic Team 7
+ * @brief   First implementation of 2 way pyserial communication between the Python and Arduino environments
+'''
+
 import serial
 import time
 import serial.tools.list_ports

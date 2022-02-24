@@ -1,3 +1,9 @@
+/*
+ * @file    pyserial_comm_test_arduino.ino
+ * @author  CU Boulder Medtronic Team 7
+ * @brief   First implementation of pyserial communcation with arduino board
+ */
+
 #include <Wire.h>               // library for I2C connections
 #include "Adafruit_MPRLS.h"     // library for the pressure sensor
 
