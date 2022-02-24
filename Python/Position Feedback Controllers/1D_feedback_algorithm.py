@@ -19,19 +19,19 @@ logging.basicConfig(filename = 'data.log', level = logging.WARNING,
     format = '%(asctime)s,%(message)s')
 
 # Init EM Nav and Arduino
-ndi = NDISensor.NDISensor()
-arduino = arduino_control.arduino()
+#ndi = NDISensor.NDISensor()
+# arduino = arduino_control.arduino()
 
 # Parameters for controller
 z_des = 40.0     # stores the desired z position input by user
 z_act = 0.0     # actual z_position from EM sensor
-k_p = .015       # proportional controller gain
+k_p = .012       # proportional controller gain
 P_act = 0.0     # actual pressure read from the pressure sensor
 P_des = 12.0    # desired pressure we're sending to the Arduino
 dT = 0.125      # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value
 int_sum = 0.0    # sum of the integral term # TODO: figure out if this should be a global value
 epsi_z_prev = 0.0 # error in z for the previous time step # TODO: figure out if this should be a global value
-k_i = 0.01         # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+k_i = 0.012         # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -52,6 +52,10 @@ class GUI:
         master.title('GUI')
         master.geometry("400x350")
         master['bg'] = '#474747'
+
+        # tkinter.Frame.__init__(self, master) 
+        self.master.bind('<Left>', self.left_key)
+        self.master.bind('<Right>', self.right_key)
 
         # <=== ROW 0 ===>
         command_label = ttk.Label(master, text = "Send Commands")
@@ -120,6 +124,14 @@ class GUI:
         clear_log_button = ttk.Button(master, text = "Clear Log File", width = 12, command = lambda: self.GUI_handleLoggingCommand("clear"))
         clear_log_button.grid(row = 11, column = 2, sticky = W, pady = 2, padx = (50,0))
         
+
+    def left_key(self, *args):
+        newCmd = command("EM_Sensor", "adjustPosition", -.25)
+        commandsFromGUI.put(newCmd)
+
+    def right_key(self, *args):
+        newCmd = command("EM_Sensor", "adjustPosition", .25)
+        commandsFromGUI.put(newCmd)
 
     def GUI_handleSetPositionCommand(self, *args):
         '''
@@ -197,11 +209,11 @@ class controllerThread(threading.Thread):
         global P_act, z_act
 
         # get the actual pressure from the pressure sensor
-        P_act = arduino.getActualPressure()
+        P_act = 0 # arduino.getActualPressure()
 
         # get actual position from EM sensor
-        position = ndi.getPositionInRange()
-        z_act = position.deltaX
+        #position = ndi.getPositionInRange()
+        z_act = 0 # position.deltaX
 
         # perform 1D proportional control
         self.one_D_algorithm()
@@ -223,10 +235,10 @@ class controllerThread(threading.Thread):
 
         # Calculate the integral sum
         int_sum = int_sum + 0.5*(epsi_z + epsi_z_prev)*dT
-        if int_sum > 10:
-            int_sum = 10
-        elif int_sum < -10:
-            int_sum = -10            
+        if int_sum > 3:
+            int_sum = 3
+        elif int_sum < -3:
+            int_sum = -3            
 
         # < -------- Shalom P_absolute method --------- >
         # Utilize the proportional and integral controller values for P_des
@@ -263,7 +275,7 @@ class controllerThread(threading.Thread):
             # higher limit of the pressure we are sending into the controller
             P_des = 13.25
 
-        arduino.sendDesiredPressure(P_des)
+        # arduino.sendDesiredPressure(P_des)
 
           
     def handleGUICommand(self, newCmd):
@@ -274,7 +286,9 @@ class controllerThread(threading.Thread):
         global z_des, k_p, k_i
 
         if (newCmd.id == "EM_Sensor"):
-            if (newCmd.field1 == "setPosition"):
+            if (newCmd.field1 == "adjustPosition"):
+                z_des += newCmd.field2
+            elif (newCmd.field1 == "setPosition"):
                 z_des = newCmd.field2
                 logging.debug("\nCommand recieved to set position to ", z_des)
             elif (newCmd.field1 == "setKp"):
