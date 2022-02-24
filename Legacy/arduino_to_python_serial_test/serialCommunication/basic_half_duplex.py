@@ -19,7 +19,7 @@ if (ser.is_open != True):
 while(True):
     print("Enter pressure (XX.XX implied) or 'r' for read pressure:")
     command = input()
-
+    
     # quit
     if (command == "q"):
         command = "1225"
@@ -29,7 +29,7 @@ while(True):
     if (command == "r"):
         # Special flag to send to arduino
         command = "9999"
-
+    
     # Convert string to utf-8 and send over serial
     bytesSent = ser.write(command.encode('utf-8'))
 
