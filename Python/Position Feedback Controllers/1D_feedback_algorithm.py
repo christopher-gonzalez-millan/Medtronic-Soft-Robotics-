@@ -3,8 +3,8 @@
  * @author  CU Boulder Medtronic Team 7
  * @brief   Basic 1D proportional controller
 '''
-import NDISensor
-import arduino_control
+from NDISensor import NDISensor
+from arduino_control import arduino_control
 import threading
 from queue import Queue
 import ctypes
@@ -15,7 +15,7 @@ from ttkthemes import ThemedStyle
 import logging
 
 # logging.basicConfig(level = logging.DEBUG)
-logging.basicConfig(filename = 'data.log', level = logging.WARNING, 
+logging.basicConfig(filename = 'data.log', level = logging.WARNING,
     format = '%(asctime)s,%(message)s')
 
 # Init EM Nav and Arduino
@@ -53,7 +53,7 @@ class GUI:
         master.geometry("400x350")
         master['bg'] = '#474747'
 
-        # tkinter.Frame.__init__(self, master) 
+        # tkinter.Frame.__init__(self, master)
         self.master.bind('<Left>', self.left_key)
         self.master.bind('<Right>', self.right_key)
 
@@ -114,7 +114,7 @@ class GUI:
         # Record data
         command_label = ttk.Label(master, text = "Data Recording")
         command_label.grid(row = 10, column = 0, sticky = W, pady = (20,2), padx = (2,0))
-        
+
         start_log_button = ttk.Button(master, text = "Start Logging", width = 12, command = lambda: self.GUI_handleLoggingCommand("start"))
         start_log_button.grid(row = 11, column = 0, sticky = W, pady = 2, padx = (2,0))
 
@@ -123,7 +123,7 @@ class GUI:
 
         clear_log_button = ttk.Button(master, text = "Clear Log File", width = 12, command = lambda: self.GUI_handleLoggingCommand("clear"))
         clear_log_button.grid(row = 11, column = 2, sticky = W, pady = 2, padx = (50,0))
-        
+
 
     def left_key(self, *args):
         newCmd = command("EM_Sensor", "adjustPosition", -.25)
@@ -187,21 +187,21 @@ class controllerThread(threading.Thread):
     def __init__(self, name):
         threading.Thread.__init__(self)
         self.name = name
-    
+
     def run(self):
-        try:            
+        try:
             while True:
                 # Look for new commands
                 if (commandsFromGUI.empty() == False):
                     newCmd = commandsFromGUI.get()
                     self.handleGUICommand(newCmd)
-                
-                self.one_D_main() 
+
+                self.one_D_main()
                 time.sleep(.07)
 
         finally:
             print('Controller thread teminated')
-    
+
     def one_D_main(self):
         '''
         main function used in thread to perform 1D algorithm
@@ -238,7 +238,7 @@ class controllerThread(threading.Thread):
         if int_sum > 3:
             int_sum = 3
         elif int_sum < -3:
-            int_sum = -3            
+            int_sum = -3
 
         # < -------- Shalom P_absolute method --------- >
         # Utilize the proportional and integral controller values for P_des
@@ -256,13 +256,13 @@ class controllerThread(threading.Thread):
         # P_des = P_o + del_P_des
         # del_P_act = P_des - P_act
 
-        # Check for windup of the integrator 
+        # Check for windup of the integrator
         # if (P_des >= 13.25) or (P_des <= 9.0):
         #     P_des = k_p*epsi_z
 
         # Update the error value for next iteration of epsi_z_prev
         epsi_z_prev = epsi_z
-    
+
     def sendDesiredPressure(self):
         '''
         convert P_des and send this pressure into the Arduino
@@ -277,7 +277,7 @@ class controllerThread(threading.Thread):
 
         arduino.sendDesiredPressure(P_des)
 
-          
+
     def handleGUICommand(self, newCmd):
         '''
         Function to handle commands from the GUI.
@@ -297,7 +297,7 @@ class controllerThread(threading.Thread):
             elif (newCmd.field1 == "setKi"):
                 k_i = newCmd.field2
                 logging.debug("\nCommand recieved to set integral gain to", k_i)
-    
+
 
     def get_id(self):
         '''
@@ -308,7 +308,7 @@ class controllerThread(threading.Thread):
         for id, thread in threading._active.items():
             if thread is self:
                 return id
-  
+
 
     def raise_exception(self):
         '''
@@ -319,7 +319,7 @@ class controllerThread(threading.Thread):
               ctypes.py_object(SystemExit))
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
-            print('Exception raise failure') 
+            print('Exception raise failure')
 
 
 def main():

@@ -9,8 +9,7 @@
 #TODO: conditional import in class
 import ndicapy
 import atexit
-import helper
-
+import serial.tools.list_ports
 
 from ndicapy import (
     ndiDeviceName, ndiProbe, NDI_OKAY,
@@ -18,6 +17,38 @@ from ndicapy import (
     ndiErrorString, NDI_115200,
     NDI_8N1, NDI_NOHANDSHAKE,
 )
+
+def getPort(deviceName):
+    """ use to find port with the given port description
+
+    Parameters
+    ----------
+    deviceName : string
+        name of device
+
+    Returns
+    -------
+    tuple
+        Return tuple where the first element is port name as string, second is device name as string
+
+    Raises
+    ------
+    NoPortsException
+        If the matrix is not numerically invertible.
+
+    """
+    COMports = serial.tools.list_ports.comports()
+
+    #check if there is aviable ports else throw exception
+    if not COMports:
+        raise Exception("Could Not Find Any Ports")
+
+    for port in COMports:
+        if deviceName in port.description:
+            return (port.device, port.description)
+
+    raise Exception("Could not find device with {} as device name".format(deviceName))
+
 
 # Class used to send cleaned parsed data
 class parsedReply:
@@ -58,7 +89,7 @@ class NDISensor:
         self.closeDevice()
 
     def findPorts(self):
-        port = helper.getPort("NDI")[0]
+        port = getPort("NDI")[0]
         port = int(port.replace('COM', '')) - 1 #subtract by one as NDI API starts ports at 0
         self.name  = ndiDeviceName(port)
         result = ndiProbe(self.name) #Returns 257 if port not found, otherwise returns 1
@@ -72,7 +103,7 @@ class NDISensor:
                 '\t2) Is the NDI device switched on?\n'
                 '\t3) Do you have sufficient privilege to connect to '
                 'the device? (e.g. on Linux are you part of the "dialout" '
-                'group?)'.format(MAX_SERIAL_PORTS)
+                'group?)'.format(0)
             )
 
     #TODO: specify how many sensors to start up and
@@ -155,7 +186,7 @@ class NDISensor:
         '''
         ndiClose(self.device)
 
-    
+
     def getPositionInRange(self):
         '''
         Ask EM sensor to give you position until tools are both in range
@@ -167,7 +198,7 @@ class NDISensor:
                 break
         return position
 
-    
+
     def getPosition(self):
         '''
         Recieve tool transformation from EM sensor

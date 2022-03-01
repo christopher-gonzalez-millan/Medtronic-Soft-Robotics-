@@ -4,7 +4,7 @@
  * @brief   Integrates Arduino with EM sensor in one python script.
             Provides GUI with simple commands like read pressure, write pressure, and read position
 '''
-import NDISensor
+from NDISensor import NDISensor
 import threading
 from queue import Queue
 import ctypes
@@ -28,7 +28,7 @@ class command:
         self.id = id
         self.field1 = field1
         self.field2 = field2
-    
+
     def callback(self, func):
         func(self)
         return self
@@ -116,7 +116,7 @@ class controllerThread(threading.Thread):
                 if position:
                     print("Delta Z: ", position.deltaZ)
                     break
-    
+
     def one_D_feedback(self, z_des, z_act, P_act, P_o):
         # define the proportional gain
         k_p = 1
@@ -141,18 +141,18 @@ class controllerThread(threading.Thread):
 
     def run(self):
         # target function of the thread class
-        try:            
+        try:
             while True:
                 if (cmdQueue.empty() == False):
                     newCmd = cmdQueue.get()
                     self.handleGUICommand(newCmd)
                     # time.sleep(1)
-            
+
         finally:
             global ser
             print('Controller thread teminated')
             ser.close()
-          
+
     def get_id(self):
         # returns id of the respective thread
         if hasattr(self, '_thread_id'):
@@ -160,15 +160,15 @@ class controllerThread(threading.Thread):
         for id, thread in threading._active.items():
             if thread is self:
                 return id
-  
+
     def raise_exception(self):
         thread_id = self.get_id()
         res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
               ctypes.py_object(SystemExit))
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
-            print('Exception raise failure') 
-        
+            print('Exception raise failure')
+
 # < =============================== Distance vector function ================================== >
 def distance_calc(x_base, y_base, z_base, x_tip, y_tip, z_tip):
     x_act = x_tip - x_base
