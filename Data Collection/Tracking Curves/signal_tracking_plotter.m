@@ -4,9 +4,17 @@ clear
 clc
 close all
 
-%% Import the proportional data from spreadsheet
+%% Find all the csv files in the directory
+files = dir('2-28-22\*.xlsx');
+
+%% Iterate over files to read information in each file
+for i=1:length(files)
+    filename = strcat(files(i).folder, '\', files(i).name);
+    [date, min, sec, ms, samples, x_des, x_act, P_des, P_act, k_p, k_i] = readvars(filename); 
+end
+
 [date, min, sec, ms, samples, x_des, x_act, P_des, P_act, k_p, k_i]...
-    = readvars('2-22-22\50_90_prop.xlsx');
+    = readvars('2-28-22\rampT20.xlsx');
 
 %% Import the PI data from the spreadsheet
 [date_i, min_i, sec_i, ms_i, samples_i, x_des_i, x_act_i, P_des_i, P_act_i, k_p_i, k_i_i]...
