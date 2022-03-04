@@ -208,6 +208,9 @@ class controllerThread(threading.Thread):
             print('Controller thread teminated')
     
     def sinusoid_signal(self):
+        '''
+        Sinusoidal input function with regard to position for the 1D channel
+        '''
         global start_time, z_des
 
         current_time = time.time()
