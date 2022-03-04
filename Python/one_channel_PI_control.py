@@ -99,9 +99,8 @@ class GUI:
         self.ki_entry.grid(row = 3, column = 1, sticky = W, pady = 2)
         self.ki_entry.bind("<Return>", self.GUI_handleSetKiCommand)
 
-        # self.master.bind("<Left>", self.left_key)
-        # self.master.bind("<Right>", self.right_key)
-
+        self.master.bind("<Left>", self.left_key)
+        self.master.bind("<Right>", self.right_key)
 
         # Diplaying data
         display_label = ttk.Label(master, text = "Press/hold enter to display")
@@ -340,7 +339,6 @@ class controllerThread(threading.Thread):
         if (newCmd.id == "EM_Sensor"):
             if (newCmd.field1 == "adjustPosition"):
                 z_des += newCmd.field2
-                print("z_des is now: ", z_des)
             elif (newCmd.field1 == "setPosition"):
                 z_des = newCmd.field2
                 logging.debug("\nCommand recieved to set position to ", z_des)
