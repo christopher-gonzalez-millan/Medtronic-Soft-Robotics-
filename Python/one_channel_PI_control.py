@@ -181,6 +181,7 @@ class GUI:
             start_time = time.time()                    # start time for ramp and sinusoid signals
         elif (status == "stop"):
             logging.getLogger().setLevel(logging.WARNING)
+            start_time = 0
         elif (status == "clear"):
             # Clear contents of log file
             with open('data.log', 'w'):
@@ -234,7 +235,7 @@ class controllerThread(threading.Thread):
 
         A = (90 - 50)/2                         # amplitude of the ramp signal
         C = (90 - 50)/2 + 50                    # shifts the signal up to range of 50 mm to 90 mm
-        f = 0.5                                 # frequency of the signal in Hz
+        f = 0.1                                 # frequency of the signal in Hz
 
         z_des = A*sg.sawtooth(2*pi*f*time_diff, width = 0.5)        # ramp signal set as a triangle wave           
 
@@ -264,7 +265,11 @@ class controllerThread(threading.Thread):
         '''
         Proportional feedback loop algorithm (includes our method and Shalom's del P)
         '''
-        global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i
+        global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i, start_time
+
+        if start_time > 0:
+            self.ramp_signal()
+            # self.sinusoid_signal()
 
         # Calculate the error between current and desired positions
         epsi_z = z_des - z_act
