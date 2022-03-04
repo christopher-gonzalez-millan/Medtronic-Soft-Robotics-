@@ -99,6 +99,9 @@ class GUI:
         self.ki_entry.grid(row = 3, column = 1, sticky = W, pady = 2)
         self.ki_entry.bind("<Return>", self.GUI_handleSetKiCommand)
 
+        # self.master.bind("<Left>", self.left_key)
+        # self.master.bind("<Right>", self.right_key)
+
 
         # Diplaying data
         display_label = ttk.Label(master, text = "Press/hold enter to display")
@@ -137,11 +140,11 @@ class GUI:
 
 
     def left_key(self, *args):
-        newCmd = command("EM_Sensor", "adjustPosition", -.25)
+        newCmd = command("EM_Sensor", "adjustPosition", .5)
         commandsFromGUI.put(newCmd)
 
     def right_key(self, *args):
-        newCmd = command("EM_Sensor", "adjustPosition", .25)
+        newCmd = command("EM_Sensor", "adjustPosition", -.5)
         commandsFromGUI.put(newCmd)
 
     def GUI_handleSetPositionCommand(self, *args):
@@ -228,8 +231,8 @@ class controllerThread(threading.Thread):
         time_diff = current_time - start_time
 
         A = 5       # amplitude of the sine signal [mm]
-        C = 75      # offset of the sine function [mm]
-        f = 0.5     # frequency of the signal [Hz]
+        C = 60      # offset of the sine function [mm]
+        f = .075     # frequency of the signal [Hz]
 
         z_des = A*sin(2*pi*f*time_diff) + C      # resulting sinusoidal z_des [mm]
 
@@ -242,9 +245,9 @@ class controllerThread(threading.Thread):
 
         A = (90 - 50)/2                         # amplitude of the ramp signal
         C = (90 - 50)/2 + 50                    # shifts the signal up to range of 50 mm to 90 mm
-        f = 0.1                                 # frequency of the signal in Hz
+        T = 60                                # period of the signal in seconds
 
-        z_des = A*sg.sawtooth(2*pi*f*time_diff, width = 0.5)        # ramp signal set as a triangle wave           
+        z_des = A*sg.sawtooth((2*pi/T)*time_diff, width = 0.5) + C       # ramp signal set as a triangle wave           
 
     def one_D_main(self):
         '''
@@ -276,8 +279,8 @@ class controllerThread(threading.Thread):
         global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i, start_time
 
         if start_time > 0:
-            self.ramp_signal()
-            # self.sinusoid_signal()
+            # self.ramp_signal()
+            self.sinusoid_signal()
 
         # Calculate the error between current and desired positions
         epsi_z = z_des - z_act
@@ -337,6 +340,7 @@ class controllerThread(threading.Thread):
         if (newCmd.id == "EM_Sensor"):
             if (newCmd.field1 == "adjustPosition"):
                 z_des += newCmd.field2
+                print("z_des is now: ", z_des)
             elif (newCmd.field1 == "setPosition"):
                 z_des = newCmd.field2
                 logging.debug("\nCommand recieved to set position to ", z_des)
