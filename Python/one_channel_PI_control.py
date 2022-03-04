@@ -13,7 +13,8 @@ from tkinter import *
 from tkinter import ttk
 from ttkthemes import ThemedStyle
 import logging
-import math
+from math import sin, pi
+from scipy import signal as sg
 
 # logging.basicConfig(level = logging.DEBUG)
 logging.basicConfig(filename = 'data.log', level = logging.WARNING,
@@ -217,7 +218,24 @@ class controllerThread(threading.Thread):
 
         time_diff = current_time - start_time
 
-        z_des = math.sin()
+        A = 5       # amplitude of the sine signal [mm]
+        C = 75      # offset of the sine function [mm]
+        f = 0.5     # frequency of the signal [Hz]
+
+        z_des = A*sin(2*pi*f*time_diff) + C      # resulting sinusoidal z_des [mm]
+
+    def ramp_signal(self):
+        global start_time, z_des
+
+        current_time = time.time()              # current time measured compared to start time
+    
+        time_diff = current_time - start_time   # time difference used for the signal
+
+        A = (90 - 50)/2                         # amplitude of the ramp signal
+        C = (90 - 50)/2 + 50                    # shifts the signal up to range of 50 mm to 90 mm
+        f = 0.5                                 # frequency of the signal in Hz
+
+        z_des = A*sg.sawtooth(2*pi*f*time_diff, width = 0.5)        # ramp signal set as a triangle wave           
 
     def one_D_main(self):
         '''
