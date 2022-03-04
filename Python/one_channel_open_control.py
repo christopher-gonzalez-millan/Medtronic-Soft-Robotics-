@@ -5,6 +5,7 @@
             Provides GUI with simple commands like read pressure, write pressure, and read position
 '''
 from NDISensor import NDISensor
+from arduino_control import arduino_control
 import threading
 from queue import Queue
 import ctypes
@@ -14,8 +15,8 @@ from tkinter import *
 from tkinter import ttk
 
 # Init EM Nav and Arduino
-# ndi = NDImodule.NDISensor()
-# arduino = ArduinoModule.arduino()
+ndi = NDISensor.NDISensor()
+arduino = arduino_control.arduino()
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -94,16 +95,16 @@ class controllerThread(threading.Thread):
                     P_des = 13.25
 
                 print("Setting pressure to : ", P_des)
-                # arduino.sendDesiredPressure(P_des)
+                arduino.sendDesiredPressure(P_des)
 
-        # elif (newCmd.id == "EM_Sensor"):
-        #     print("controller wants to read position")
-        #     global ndi
-        #     while True:
-        #         position = ndi.getPosition()
-        #         if position:
-        #             print("Delta Z: ", position.deltaZ)
-        #             break
+        elif (newCmd.id == "EM_Sensor"):
+            print("controller wants to read position")
+            global ndi
+            while True:
+                position = ndi.getPosition()
+                if position:
+                    print("Delta Z: ", position.deltaZ)
+                    break
 
     def run(self):
         # target function of the thread class

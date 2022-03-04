@@ -26,8 +26,8 @@ csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
                         level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
 
 # Init EM Nav and Arduino
-ndi = NDImodule.NDISensor()
-arduino = ArduinoModule.arduino()
+ndi = NDISensor.NDISensor()
+arduino = arduino_control.arduino()
 arduino.selectChannels(arduino.OFF, arduino.ON, arduino.OFF)
 
 # Parameters for controller
