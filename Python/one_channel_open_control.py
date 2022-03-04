@@ -5,6 +5,7 @@
             Provides GUI with simple commands like read pressure, write pressure, and read position
 '''
 from NDISensor import NDISensor
+from arduino_control import arduino_control
 import threading
 from queue import Queue
 import ctypes
@@ -13,14 +14,12 @@ import serial as pys
 from tkinter import *
 from tkinter import ttk
 
-# Globals shared between threads
-cmdQueue = Queue()
-
-ser = pys.Serial()
-ser.baudrate = 115200
-ser.port = 'COM4'
-
+# Init EM Nav and Arduino
 ndi = NDISensor.NDISensor()
+arduino = arduino_control.arduino()
+
+# Queue for inter-thread communication
+commandsFromGUI = Queue()
 
 # Class used for all commands
 class command:
@@ -28,10 +27,6 @@ class command:
         self.id = id
         self.field1 = field1
         self.field2 = field2
-
-    def callback(self, func):
-        func(self)
-        return self
 
 
 # <===================== Building GUI =====================>
@@ -43,14 +38,8 @@ root['bg'] = '#0059b3'
 # Handling Arduino related commands from GUI
 def GUI_handleArduinoCommand():
     global arduino_entry
-    newCmd = command("Arduino", arduino_entry.get(), 0)
-    # field1 = 0
-    # field2 = 0
-    # def cb(self):
-    #     field1 = self.field1
-    #     field2 = self.field2
-    # newCmd.callback(cb)
-    cmdQueue.put(newCmd)
+    newCmd = command("Arduino", float(arduino_entry.get()), 0)
+    commandsFromGUI.put(newCmd)
 
 labelText=StringVar()
 labelText.set("Enter desired pressure [psi]:")
@@ -65,20 +54,14 @@ ttk.Button(root, text= "Send",width= 10, command=GUI_handleArduinoCommand).pack(
 
 def GUI_handlePressureRead():
     newCmd = command("Arduino", "read", 0)
-    cmdQueue.put(newCmd)
+    commandsFromGUI.put(newCmd)
 
 ttk.Button(root, text= "Read Pressure from Arduino",width= 30, command=GUI_handlePressureRead).pack(pady=20)
 
 # Handling EM Sensor = realted commands from GUI
 def GUI_handleEMcommand():
     newCmd = command("EM_Sensor", 0, 0)
-    # field1 = 0
-    # field2 = 0
-    # def cb(self):
-    #     field1 = self.field1
-    #     field2 = self.field2
-    # newCmd.callback(cb)
-    cmdQueue.put(newCmd)
+    commandsFromGUI.put(newCmd)
 
 ttk.Button(root, text= "Read Position from EM Sensor",width= 30, command=GUI_handleEMcommand).pack(pady=20)
 # <==========================================================>
@@ -99,17 +82,23 @@ class controllerThread(threading.Thread):
         if (newCmd.id == "Arduino"):
             global ser
             if (newCmd.field1 == "read"):
-                # Convert string to utf-8 and send over serial
-                command = "9999"
-                bytesSent = ser.write(command.encode('utf-8'))
-                time.sleep(.1)
-                temp = ser.readline().decode("utf-8")
-                print("Pressure: %(val)s" % {"val": temp.rstrip()})
+                P_act = 0 # arduino.getActualPressure()
+                print("Current Pressure: ", P_act)
             else:
-                # Convert string to utf-8 and send over serial
-                bytesSent = ser.write(newCmd.field1.encode('utf-8'))
+                P_des = newCmd.field1
+
+                if P_des < 9.0:
+                    # lower limit of the pressure we are sending into the controller
+                    P_des = 9.0
+                elif P_des > 13.25:
+                    # higher limit of the pressure we are sending into the controller
+                    P_des = 13.25
+
+                print("Setting pressure to : ", P_des)
+                arduino.sendDesiredPressure(P_des)
+
         elif (newCmd.id == "EM_Sensor"):
-            # print("controller wants to read position")
+            print("controller wants to read position")
             global ndi
             while True:
                 position = ndi.getPosition()
@@ -117,39 +106,17 @@ class controllerThread(threading.Thread):
                     print("Delta Z: ", position.deltaZ)
                     break
 
-    def one_D_feedback(self, z_des, z_act, P_act, P_o):
-        # define the proportional gain
-        k_p = 1
-
-        # Calculate the error between current and desired positions
-        epsi_z = z_des - z_act
-
-        # Multiply by the proportional gain k_p
-        P_des = k_p * epsi_z
-
-        # < ------- Our feedback method --------- >
-        # del_P_des = k_p * epsi_z
-        # P_des = P_act + del_P_des
-
-        # < -------- Shalom delta P method ------- >
-        # Figure out how to utilize del_P_act instead of P_des (on Arduino side?)
-        # del_P_des = k_p*epsi_z
-        # P_des = P_o + del_P_des
-        # del_P_act = P_des - P_act
-
-        return P_des
-
     def run(self):
         # target function of the thread class
         try:
             while True:
-                if (cmdQueue.empty() == False):
-                    newCmd = cmdQueue.get()
+                if (commandsFromGUI.empty() == False):
+                    newCmd = commandsFromGUI.get()
                     self.handleGUICommand(newCmd)
-                    # time.sleep(1)
-
+                    time.sleep(.07)
+            
         finally:
-            global ser
+            # global ser
             print('Controller thread teminated')
             ser.close()
 
@@ -167,29 +134,12 @@ class controllerThread(threading.Thread):
               ctypes.py_object(SystemExit))
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
-            print('Exception raise failure')
-
-# < =============================== Distance vector function ================================== >
-def distance_calc(x_base, y_base, z_base, x_tip, y_tip, z_tip):
-    x_act = x_tip - x_base
-    y_act = y_tip - y_base
-    z_act = z_tip - z_base
-# < =========================================================================================== >
+            print('Exception raise failure') 
 
 def main():
     '''
     Starting point for script
     '''
-
-    # Open Serial to Arduino
-    global ser
-    ser = pys.Serial()
-    ser.baudrate = 115200
-    ser.port = 'COM4'
-    ser.open()
-    if (ser.is_open != True):
-        print("Could not open serial")
-        quit()
 
     # Spin up controller
     t1 = controllerThread('Thread 1')

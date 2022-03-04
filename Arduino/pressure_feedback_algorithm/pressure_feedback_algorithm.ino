@@ -13,32 +13,50 @@
 #define NUM_CHANNELS  3
 #define ON 1
 #define OFF 0
-// Turn channels on and off here!
-#define CHANNEL_1 OFF
-#define CHANNEL_2 ON
-#define CHANNEL_3 OFF
-#define DEFAULT_PRESSURE 12.0
-#define PRESSURE_HOLD_TOLERANCE 0.05
+#define DEFAULT_PRESSURE 12.25
+
+/*
+ * IMPORTANT: These are two different tolerances used in the bang-bang controller.
+ * The reason these are different is to try and reduce resonance and promote stability.
+ * Downside is that signal tracking becomes choppy.
+ * 
+ * PRESSURE_TOLERANCE is how close your pressure sensor reading has to be to
+ * the desired value in order to cause a state transition from INFLATE or DEFLATE
+ * to HOLD.
+ *
+ * PRESSURE_HOLD_TOLERANCE is how far off the desired pressure you have to be
+ * in order to cause a state transition from HOLD to DEFLATE or INFLATE
+ *
+ */
 #define PRESSURE_TOLERANCE 0.01
+#define PRESSURE_HOLD_TOLERANCE 0.05
 
 // I/O related defines
 #define SOLENOID_CLOSED LOW
 #define SOLENOID_OPEN HIGH
-#define PUMP_PWM_POS 90
-#define PUMP_PWM_NEG 90
+/*
+ * Dictates duty cycle for all positive and negative pumps, in all cases!
+ * This is the lowest operable analog value for our pumps.
+ * 110/255 * 5V = 2.15V Sent to pump
+ */
+#define PUMP_PWM_POS 110
+#define PUMP_PWM_NEG 110
 #define PUMP_OFF 0
 
 // Serial related defines
-#define EXPECTED_MSG_LENGTH (4*(CHANNEL_1 + CHANNEL_2 + CHANNEL_3)) // 4 bytes per channel
-#define COMMAND_FREQUENCY_MS 10 // milliseconds
+#define MSG_HEADER_SIZE 2
+#define MSG_BODY_SIZE 4
+#define EXPECTED_MSG_LENGTH (MSG_HEADER_SIZE + MSG_BODY_SIZE)
+// Special message for selecting which channels you want to run on
+#define CHANNEL_SELECTION_MSG_LENGTH 3
 
 // Enabled when pressure sensor functions are defined here in file
 #define LOCAL_PRESSURE_SENSOR_FUNCTIONS
 
 // Pin definitions for the pressure sensor
-#define RESET_PIN  -1  // set to any GPIO pin # to hard-reset on begin()
-#define EOC_PIN    -1  // set to any GPIO pin to read end-of-conversion by pin
-#define TCAADDR 0x70   // address for the mux
+#define RESET_PIN  -1   // set to any GPIO pin # to hard-reset on begin()
+#define EOC_PIN    -1   // set to any GPIO pin to read end-of-conversion by pin
+#define TCAADDR    0x70 // address for the mux
 
 // Instantiate mpr class for pressure sensors
 Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
@@ -53,11 +71,11 @@ typedef enum {
 // Data stored for each channel
 struct channelData 
 {
-    uint8_t active;
-    state currentState;
-    float currentPressure;
-    float desiredPressure;
-    int positivePump;
+    uint8_t active;         // Whether or not channel is active
+    state currentState;     // Current state of channel (defiend by 'state' enum)
+    float currentPressure;  // Current pressure read from sensors
+    float desiredPressure;  // Pressure that controller is trying to reach
+    int positivePump;       // I/O Pins for all hardware for the channel
     int negativePump;
     int positiveSolenoid;
     int negativeSolenoid;
@@ -65,13 +83,10 @@ struct channelData
 
 channelData channels[NUM_CHANNELS] =
 {
-    {CHANNEL_1, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 3,  5,  2,  4},
-    {CHANNEL_2, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 6,  9,  7,  8},
-    {CHANNEL_3, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10, 11, 12, 13},
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 3,  5,  2,  4},  // Channel 0
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 6,  9,  7,  8},  // Channel 1
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10, 11, 12, 13}, // Channel 2
 };
-
-unsigned long currentTime = 0;
-unsigned long lastCommandTime = 0;
 
 /*
  * @name  setup
@@ -92,6 +107,7 @@ void setup() {
         pinMode(channels[cNum].negativeSolenoid, OUTPUT);
     }
 
+    // Send confirmation on serial line
     Serial.println("Arduino Setup Complete");
 }
 
@@ -100,24 +116,12 @@ void setup() {
  * @desc  called indefinitely
  */
 void loop() {
-    currentTime = millis();
 
     // Read in serial command if needed...
     // Arduino serial buffer holds 64 bytes
-    // Check for new command...
-    // Contains desired PSI (implied decimal XX.XX) for channels that are enabled
     if (Serial.available() >= EXPECTED_MSG_LENGTH)
     {
         handleCommand();
-
-        // Flush rest of input buffer
-        // while(Serial.available()) 
-        // {
-        //     char t = Serial.read();
-        // }
-
-        // Update last command time
-        // lastCommandTime = millis();
     }
 
     // Update I/O if needed based on last command
@@ -127,6 +131,7 @@ void loop() {
         {
             channels[cNum].currentPressure = get_pressure(mpr, cNum);
 
+            // Switch for determining whether or not we need to change the state
             switch (channels[cNum].currentState)
             {
                 case INFLATE:
@@ -167,6 +172,7 @@ void loop() {
                     break;
             }     
 
+            // Switch for acting on current state
             switch (channels[cNum].currentState)
             {
                 case INFLATE:
@@ -175,12 +181,12 @@ void loop() {
                     analogWrite(channels[cNum].negativePump, PUMP_OFF);
 
                     // Solenoids
-                    // digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
-                    // delay(1);
-                    digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_OPEN);
-                    // delay(4);
                     digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
-                    
+                    // Digitally "PWM" solenoid valve to slow infill
+                    digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_OPEN);
+                    delay(3);
+                    digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
+                    delay(3);
                     break; 
                     
                 case HOLD:
@@ -194,23 +200,29 @@ void loop() {
                     break;
                 
                 case DEFLATE:
-                    // Solenoids
                     digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
+
+                    /*
+                     * If you are at a high pressure, PWM the solenoid valve to slow deflate.
+                     * Otherwise, open negative valve fully to allow channel to reach
+                     * lowest possible pressure
+                     */
                     if (channels[cNum].currentPressure >= 12.28)
                     {
+                        analogWrite(channels[cNum].negativePump, PUMP_OFF);
                         digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_OPEN);
                         delay(2);
                         digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
-                        delay(5);
+                        delay(4);
                     }
                     else
                     {
+                        analogWrite(channels[cNum].negativePump, PUMP_PWM_NEG);
                         digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_OPEN);
                     }
 
                     // Pumps
-                    analogWrite(channels[cNum].positivePump, PUMP_OFF);
-                    analogWrite(channels[cNum].negativePump, PUMP_PWM_NEG); 
+                    analogWrite(channels[cNum].positivePump, PUMP_OFF); 
                     break;
             }
         } 
@@ -219,44 +231,92 @@ void loop() {
 }
 
 /*
- * @name    commandHandler
+ * @name    handleCommand
  * @desc    Handle command if found in serial buffer
  * @param   None
  * @return  None
  */
 void handleCommand(void)
 {
-    char pressureVal[4];
-    // Read in pressure values for all channels
-    for (int8_t cNum = 0; cNum < NUM_CHANNELS; cNum++)
-    {
-        if(channels[cNum].active)
-        {
-            // Parse 4 characters for given channel
-            for (int8_t i = 0; i < 4; i++)
-            {
-                char asc = Serial.read();
-                pressureVal[i] = asc;
-            }
+    char header[2];
+    char msg[4];
 
-            char pressure[5];
-            sprintf(pressure, "%c%c.%c%c", pressureVal[0], pressureVal[1], pressureVal[2], pressureVal[3]);
-            
-            if (strncmp(pressure, "99.99", 5) == 0)
-            {
-                // Read pressure command
-                channels[cNum].currentPressure = get_pressure(mpr, cNum);
-                String pVal = String(channels[cNum].currentPressure, 2);
-                Serial.println(pVal);
-            } 
-            else
-            {
-                // Set pressure command
-                channels[cNum].desiredPressure = ((String(pressure)).toFloat());
-                Serial.println("rx");
-            }
+    // Read first two bytes as header
+    header[0] = Serial.read();
+    header[1] = Serial.read();
+
+    // Read header to find channel number
+    uint8_t cNum;
+    if (strncmp(header, "c0", 2) == 0)
+    {
+        cNum = 0;
+    }
+    else if (strncmp(header, "c1", 2) == 0)
+    {
+        cNum = 1;
+    }
+    else if (strncmp(header, "c2", 2) == 0)
+    {
+        cNum = 2;
+    }
+    else if (strncmp(header, "sc", 2) == 0)
+    {
+        handleSelectionCommand();
+        return;
+    }
+    else
+    {
+        Serial.println("CMD ERROR");
+        return;
+    }
+
+    // Read in body of message
+    for (int8_t i = 0; i < 4; i++)
+    {
+        msg[i] = Serial.read();
+    }
+
+    if (strncmp(msg, "read", 4) == 0)
+    {
+        // Read pressure command
+        channels[cNum].currentPressure = get_pressure(mpr, cNum);
+        String pVal = String(channels[cNum].currentPressure, 2);
+        Serial.println(pVal);
+    }
+    else
+    {
+        // Set pressure command...
+        // Contains desired PSI (implied decimal XX.XX) for channels that are enabled
+        char pressure[5];
+        sprintf(pressure, "%c%c.%c%c", msg[0], msg[1], msg[2], msg[3]);
+        channels[cNum].desiredPressure = ((String(pressure)).toFloat());
+        // Send confirmation back
+        Serial.println("rx");
+    }
+
+}
+
+/*
+ * @name    handleSelctionCommand
+ * @desc    Handle command for channel selection
+ * @param   None
+ * @return  None
+ */
+void handleSelectionCommand(void)
+{
+    for (int8_t cNum = 0; cNum < 3; cNum++)
+    {
+        char enabled = Serial.read();
+        if (enabled == '1')
+        {
+            channels[cNum].active = ON;
         }
     }
+    // Extra character currently not being used
+    char reserved = Serial.read();
+
+    // Send confirmation back
+    Serial.println("rx");
 }
 
 #if defined(LOCAL_PRESSURE_SENSOR_FUNCTIONS)

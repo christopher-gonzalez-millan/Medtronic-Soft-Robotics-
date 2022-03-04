@@ -10,14 +10,13 @@ import logging
 import serial.tools.list_ports
 
 
-READ_PRESSURE_CMD = "9999"       # Predefined string to send Arduino to read pressure
 SETUP_WAIT_TIME_SEC = 10         # Forcing python to wait 10 seconds before asking the Arduino if connection
                                  # is complete. We want to avoid using the serial line while pressure sensors
                                  # Are being initialized on the arduino side. TODO: Determine if value can be decreased
 SETUP_COMPLETE_MSG_LENGTH = 23   # Message length for confirmation sent back by Arduino
 MSG_RECIEVED_BY_ARDUINO = "rx"   # Message sent back from Arduino when it has processed a serial message from Python
-PRESSURE_RESPONSE_MSG_LENGTH = 4 # Number of bytes expected when Arduino is sending back a pressure value
-DEFAULT_PRESSURE_PSI = "1225"    # Pressure near atmospheric
+MSG_RECIEVED_BY_ARDUINO_LENGTH = 4 # Number of bytes expected when Arduino is sending back a confirmation
+DEFAULT_PRESSURE_PSI = 12.25    # Pressure near atmospheric in psi, with implied decimal after 2
 
 def getPort(deviceName):
     """ use to find port with the given port description
@@ -52,7 +51,20 @@ def getPort(deviceName):
 
 class arduino:
     def __init__(self):
-        self.P_act = 12.25
+        # Used for indicating which channels are on and off
+        self.ON = "1"
+        self.OFF = "0"
+
+        # Labeling channels
+        self.channel0 = 0
+        self.channel1 = 1
+        self.channel2 = 2
+
+        # Enable channels
+        self.c0_enabled = self.OFF
+        self.c1_enabled = self.OFF
+        self.c2_enabled = self.OFF
+
         self.ser = pys.Serial()
         self.startCommunication()
 
@@ -77,20 +89,21 @@ class arduino:
                 if(arduinoSetup.rstrip() == "Arduino Setup Complete"):
                     print("Arduino Serial Established")
                     break
-
-    def getActualPressure(self):
-        '''
+        
+    def getActualPressure(self, channelNum):
+        '''     
         Obtains actual pressure from pressure sensor
         '''
-        self.ser.write(READ_PRESSURE_CMD.encode('utf-8'))
+        readPressure = 'c{}{}'.format(channelNum, "read")
+        self.ser.write(readPressure.encode('utf-8'))
         while True:
             if(self.ser.in_waiting > 4):
-                self.P_act = float(self.ser.readline().decode('utf-8'))  # convert pressures from string to float
+                P_act = float(self.ser.readline().decode('utf-8'))  # convert pressures from string to float
                 break
 
-        return self.P_act
+        return P_act
 
-    def sendDesiredPressure(self, desiredPressure):
+    def sendDesiredPressure(self, channelNum, desiredPressure):
         '''
         convert desiredPressure and send this pressure into the Arduino
         '''
@@ -114,14 +127,34 @@ class arduino:
             command = command + '0'
 
         # Send over desired pressure to Arduino
-        logging.debug("Writing command to arduino: ", command.encode('utf-8'))
+        sendPressure = 'c{}{}'.format(channelNum, command)
+        # print("Writing command to arduino: ", sendPressure.encode('utf-8'))
+        self.ser.write(sendPressure.encode('utf-8'))
+        while True:
+            if (self.ser.in_waiting == MSG_RECIEVED_BY_ARDUINO_LENGTH):
+                if ((self.ser.readline().decode('utf-8')).rstrip() == MSG_RECIEVED_BY_ARDUINO):
+                    break
+
+    def selectChannels(self, c0_status, c1_status, c2_status):
+        self.c0_enabled = c0_status
+        self.c1_enabled = c1_status
+        self.c2_enabled = c2_status
+
+        command = 'sc{}{}{}0'.format(self.c0_enabled, self.c1_enabled, self.c2_enabled)
+        # print("Writing command to arduino: ", command.encode('utf-8'))
         self.ser.write(command.encode('utf-8'))
         while True:
-            if (self.ser.in_waiting == PRESSURE_RESPONSE_MSG_LENGTH):
+            if (self.ser.in_waiting == MSG_RECIEVED_BY_ARDUINO_LENGTH):
                 if ((self.ser.readline().decode('utf-8')).rstrip() == MSG_RECIEVED_BY_ARDUINO):
                     break
 
     def close(self):
         # Send command to reset to default pressure before terminating
-        self.ser.write(DEFAULT_PRESSURE_PSI.encode('utf-8'))
+        if self.c0_enabled:
+            self.sendDesiredPressure(self.channel0, DEFAULT_PRESSURE_PSI)
+        if self.c1_enabled:
+            self.sendDesiredPressure(self.channel1, DEFAULT_PRESSURE_PSI)
+        if self.c2_enabled:
+            self.sendDesiredPressure(self.channel2, DEFAULT_PRESSURE_PSI)
+
         self.ser.close()

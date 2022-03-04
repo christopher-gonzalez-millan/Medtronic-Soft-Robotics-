@@ -1,5 +1,5 @@
 '''
- * @file    !D_feedback_algorithm.py
+ * @file    one_channel_PI_control.py
  * @author  CU Boulder Medtronic Team 7
  * @brief   Basic 1D proportional controller
 '''
@@ -13,14 +13,22 @@ from tkinter import *
 from tkinter import ttk
 from ttkthemes import ThemedStyle
 import logging
+from csv_logger import CsvLogger
+from math import sin, pi
+from scipy import signal as sg
 
-# logging.basicConfig(level = logging.DEBUG)
-logging.basicConfig(filename = 'data.log', level = logging.WARNING,
+logging.basicConfig(filename = 'data.log', level = logging.WARNING, 
     format = '%(asctime)s,%(message)s')
+
+# create csv logging object to store the data collected
+header = ['date', 'time_diff', 'z_des', 'z_act', 'P_des', 'P_act', 'k_p', 'k_i']
+csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
+                        level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
 
 # Init EM Nav and Arduino
 ndi = NDISensor.NDISensor()
 arduino = arduino_control.arduino()
+arduino.selectChannels(arduino.OFF, arduino.ON, arduino.OFF)
 
 # Parameters for controller
 z_des = 40.0     # stores the desired z position input by user
@@ -32,6 +40,8 @@ dT = 0.125      # time between cycles (seconds) # TODO: find a way to clock the 
 int_sum = 0.0    # sum of the integral term # TODO: figure out if this should be a global value
 epsi_z_prev = 0.0 # error in z for the previous time step # TODO: figure out if this should be a global value
 k_i = 0.012         # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+start_time = 0      # start time for the ramp and sinusoid signals
+time_diff = 0       # time difference betweeen the start and current times
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -88,6 +98,8 @@ class GUI:
         self.ki_entry.grid(row = 3, column = 1, sticky = W, pady = 2)
         self.ki_entry.bind("<Return>", self.GUI_handleSetKiCommand)
 
+        self.master.bind("<Left>", self.left_key)
+        self.master.bind("<Right>", self.right_key)
 
         # Diplaying data
         display_label = ttk.Label(master, text = "Press/hold enter to display")
@@ -126,11 +138,11 @@ class GUI:
 
 
     def left_key(self, *args):
-        newCmd = command("EM_Sensor", "adjustPosition", -.25)
+        newCmd = command("EM_Sensor", "adjustPosition", .5)
         commandsFromGUI.put(newCmd)
 
     def right_key(self, *args):
-        newCmd = command("EM_Sensor", "adjustPosition", .25)
+        newCmd = command("EM_Sensor", "adjustPosition", -.5)
         commandsFromGUI.put(newCmd)
 
     def GUI_handleSetPositionCommand(self, *args):
@@ -170,10 +182,14 @@ class GUI:
         '''
         Start logging
         '''
+        global start_time
+
         if (status == "start"):
             logging.getLogger().setLevel(logging.INFO)
+            start_time = time.time()                    # start time for ramp and sinusoid signals
         elif (status == "stop"):
             logging.getLogger().setLevel(logging.WARNING)
+            start_time = 0
         elif (status == "clear"):
             # Clear contents of log file
             with open('data.log', 'w'):
@@ -201,15 +217,44 @@ class controllerThread(threading.Thread):
 
         finally:
             print('Controller thread teminated')
+    
+    def sinusoid_signal(self):
+        '''
+        Sinusoidal input function with regard to position for the 1D channel
+        '''
+        global start_time, z_des, time_diff
+
+        current_time = time.time()
+
+        time_diff = current_time - start_time
+
+        A = 5       # amplitude of the sine signal [mm]
+        C = 60      # offset of the sine function [mm]
+        f = .075     # frequency of the signal [Hz]
+
+        z_des = A*sin(2*pi*f*time_diff) + C      # resulting sinusoidal z_des [mm]
+
+    def ramp_signal(self):
+        global start_time, z_des, time_diff
+
+        current_time = time.time()              # current time measured compared to start time
+    
+        time_diff = current_time - start_time   # time difference used for the signal
+
+        A = (90 - 50)/2                         # amplitude of the ramp signal
+        C = (90 - 50)/2 + 50                    # shifts the signal up to range of 50 mm to 90 mm
+        T = 60                                # period of the signal in seconds
+
+        z_des = A*sg.sawtooth((2*pi/T)*time_diff, width = 0.5) + C       # ramp signal set as a triangle wave           
 
     def one_D_main(self):
         '''
         main function used in thread to perform 1D algorithm
         '''
-        global P_act, z_act
+        global P_act, z_act, time_diff, csv_logger
 
         # get the actual pressure from the pressure sensor
-        P_act = arduino.getActualPressure()
+        P_act = arduino.getActualPressure(arduino.channel1)
 
         # get actual position from EM sensor
         position = ndi.getPositionInRange()
@@ -222,13 +267,19 @@ class controllerThread(threading.Thread):
         self.sendDesiredPressure()
 
         # Log all control variables if needed
-        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (z_des, z_act, P_des, P_act, k_p, k_i))
+        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, z_des, z_act, P_des, P_act, k_p, k_i))
+        if logging.getLogger().getEffectiveLevel() == logging.INFO:
+            csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, z_des, z_act, P_des, P_act, k_p, k_i))
 
     def one_D_algorithm(self):
         '''
         Proportional feedback loop algorithm (includes our method and Shalom's del P)
         '''
-        global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i
+        global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i, start_time
+
+        if start_time > 0:
+            # self.ramp_signal()
+            self.sinusoid_signal()
 
         # Calculate the error between current and desired positions
         epsi_z = z_des - z_act
@@ -275,7 +326,7 @@ class controllerThread(threading.Thread):
             # higher limit of the pressure we are sending into the controller
             P_des = 13.25
 
-        arduino.sendDesiredPressure(P_des)
+        arduino.sendDesiredPressure(arduino.channel1, P_des)
 
 
     def handleGUICommand(self, newCmd):
