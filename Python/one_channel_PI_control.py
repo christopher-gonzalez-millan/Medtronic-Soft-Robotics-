@@ -21,8 +21,9 @@ logging.basicConfig(filename = 'data.log', level = logging.WARNING,
     format = '%(asctime)s,%(message)s')
 
 # Init EM Nav and Arduino
-ndi = NDISensor.NDISensor()
-arduino = arduino_control.arduino()
+ndi = NDImodule.NDISensor()
+arduino = ArduinoModule.arduino()
+arduino.selectChannels(arduino.OFF, arduino.ON, arduino.OFF)
 
 # Parameters for controller
 z_des = 40.0     # stores the desired z position input by user
@@ -244,7 +245,7 @@ class controllerThread(threading.Thread):
         global P_act, z_act
 
         # get the actual pressure from the pressure sensor
-        P_act = arduino.getActualPressure()
+        P_act = arduino.getActualPressure(arduino.channel1)
 
         # get actual position from EM sensor
         position = ndi.getPositionInRange()
@@ -310,7 +311,7 @@ class controllerThread(threading.Thread):
             # higher limit of the pressure we are sending into the controller
             P_des = 13.25
 
-        arduino.sendDesiredPressure(P_des)
+        arduino.sendDesiredPressure(arduino.channel1, P_des)
 
 
     def handleGUICommand(self, newCmd):

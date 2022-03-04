@@ -37,7 +37,7 @@ root['bg'] = '#0059b3'
 # Handling Arduino related commands from GUI
 def GUI_handleArduinoCommand():
     global arduino_entry
-    newCmd = command("Arduino", arduino_entry.get(), 0)
+    newCmd = command("Arduino", float(arduino_entry.get()), 0)
     commandsFromGUI.put(newCmd)
 
 labelText=StringVar()
@@ -93,6 +93,7 @@ class controllerThread(threading.Thread):
                     # higher limit of the pressure we are sending into the controller
                     P_des = 13.25
 
+                print("Setting pressure to : ", P_des)
                 # arduino.sendDesiredPressure(P_des)
 
         # elif (newCmd.id == "EM_Sensor"):
@@ -114,10 +115,15 @@ class controllerThread(threading.Thread):
                     time.sleep(.07)
             
         finally:
-            global ser
+            # global ser
             print('Controller thread teminated')
+<<<<<<< HEAD
             ser.close()
 
+=======
+            # ser.close()
+          
+>>>>>>> abd7112 (bug fixes for 3 channel update)
     def get_id(self):
         # returns id of the respective thread
         if hasattr(self, '_thread_id'):
