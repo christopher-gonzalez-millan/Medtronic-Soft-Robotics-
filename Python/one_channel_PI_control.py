@@ -13,12 +13,18 @@ from tkinter import *
 from tkinter import ttk
 from ttkthemes import ThemedStyle
 import logging
+from csv_logger import CsvLogger
 from math import sin, pi
 from scipy import signal as sg
 
 # logging.basicConfig(level = logging.DEBUG)
 logging.basicConfig(filename = 'data.log', level = logging.WARNING,
     format = '%(asctime)s,%(message)s')
+
+# create csv logging object to store the data collected
+header = ['date', 'time_diff', 'z_des', 'z_act', 'P_des', 'P_act', 'k_p', 'k_i']
+csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
+                        level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
 
 # Init EM Nav and Arduino
 ndi = NDImodule.NDISensor()
@@ -36,6 +42,7 @@ int_sum = 0.0    # sum of the integral term # TODO: figure out if this should be
 epsi_z_prev = 0.0 # error in z for the previous time step # TODO: figure out if this should be a global value
 k_i = 0.012         # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
 start_time = 0      # start time for the ramp and sinusoid signals
+time_diff = 0       # time difference betweeen the start and current times
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -214,7 +221,7 @@ class controllerThread(threading.Thread):
         '''
         Sinusoidal input function with regard to position for the 1D channel
         '''
-        global start_time, z_des
+        global start_time, z_des, time_diff
 
         current_time = time.time()
 
@@ -227,7 +234,7 @@ class controllerThread(threading.Thread):
         z_des = A*sin(2*pi*f*time_diff) + C      # resulting sinusoidal z_des [mm]
 
     def ramp_signal(self):
-        global start_time, z_des
+        global start_time, z_des, time_diff
 
         current_time = time.time()              # current time measured compared to start time
     
@@ -243,7 +250,7 @@ class controllerThread(threading.Thread):
         '''
         main function used in thread to perform 1D algorithm
         '''
-        global P_act, z_act
+        global P_act, z_act, time_diff, csv_logger
 
         # get the actual pressure from the pressure sensor
         P_act = arduino.getActualPressure(arduino.channel1)
@@ -259,7 +266,8 @@ class controllerThread(threading.Thread):
         self.sendDesiredPressure()
 
         # Log all control variables if needed
-        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (z_des, z_act, P_des, P_act, k_p, k_i))
+        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, z_des, z_act, P_des, P_act, k_p, k_i))
+        csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, z_des, z_act, P_des, P_act, k_p, k_i))
 
     def one_D_algorithm(self):
         '''
