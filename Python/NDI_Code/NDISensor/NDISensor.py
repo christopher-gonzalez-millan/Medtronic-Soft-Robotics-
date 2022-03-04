@@ -9,12 +9,7 @@
 #TODO: conditional import in class
 import ndicapy
 import atexit
-<<<<<<<< HEAD:Python/NDI_Code/NDISensor/NDISensor.py
 import serial.tools.list_ports
-========
-import NDI_Code.helper as helper
-
->>>>>>>> 8b7f2ce (initial commit for 3 channel update):Python/NDI_Code/NDISensorCommunication.py
 
 from ndicapy import (
     ndiDeviceName, ndiProbe, NDI_OKAY,
