@@ -1,5 +1,5 @@
 '''
- * @file    !D_feedback_algorithm.py
+ * @file    one_channel_PI_control.py
  * @author  CU Boulder Medtronic Team 7
  * @brief   Basic 1D proportional controller
 '''
