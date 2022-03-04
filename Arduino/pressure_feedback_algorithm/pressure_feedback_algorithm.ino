@@ -14,14 +14,33 @@
 #define ON 1
 #define OFF 0
 #define DEFAULT_PRESSURE 12.25
-#define PRESSURE_HOLD_TOLERANCE 0.05
+
+/*
+ * IMPORTANT: These are two different tolerances used in the bang-bang controller.
+ * The reason these are different is to try and reduce resonance and promote stability.
+ * Downside is that signal tracking becomes choppy.
+ * 
+ * PRESSURE_TOLERANCE is how close your pressure sensor reading has to be to
+ * the desired value in order to cause a state transition from INFLATE or DEFLATE
+ * to HOLD.
+ *
+ * PRESSURE_HOLD_TOLERANCE is how far off the desired pressure you have to be
+ * in order to cause a state transition from HOLD to DEFLATE or INFLATE
+ *
+ */
 #define PRESSURE_TOLERANCE 0.01
+#define PRESSURE_HOLD_TOLERANCE 0.05
 
 // I/O related defines
 #define SOLENOID_CLOSED LOW
 #define SOLENOID_OPEN HIGH
-#define PUMP_PWM_POS 90
-#define PUMP_PWM_NEG 90
+/*
+ * Dictates duty cycle for all positive and negative pumps, in all cases!
+ * This is the lowest operable analog value for our pumps.
+ * 110/255 * 5V = 2.15V Sent to pump
+ */
+#define PUMP_PWM_POS 110
+#define PUMP_PWM_NEG 110
 #define PUMP_OFF 0
 
 // Serial related defines
@@ -52,11 +71,11 @@ typedef enum {
 // Data stored for each channel
 struct channelData 
 {
-    uint8_t active;
-    state currentState;
-    float currentPressure;
-    float desiredPressure;
-    int positivePump;
+    uint8_t active;         // Whether or not channel is active
+    state currentState;     // Current state of channel (defiend by 'state' enum)
+    float currentPressure;  // Current pressure read from sensors
+    float desiredPressure;  // Pressure that controller is trying to reach
+    int positivePump;       // I/O Pins for all hardware for the channel
     int negativePump;
     int positiveSolenoid;
     int negativeSolenoid;
@@ -88,6 +107,7 @@ void setup() {
         pinMode(channels[cNum].negativeSolenoid, OUTPUT);
     }
 
+    // Send confirmation on serial line
     Serial.println("Arduino Setup Complete");
 }
 
@@ -111,6 +131,7 @@ void loop() {
         {
             channels[cNum].currentPressure = get_pressure(mpr, cNum);
 
+            // Switch for determining whether or not we need to change the state
             switch (channels[cNum].currentState)
             {
                 case INFLATE:
@@ -151,6 +172,7 @@ void loop() {
                     break;
             }     
 
+            // Switch for acting on current state
             switch (channels[cNum].currentState)
             {
                 case INFLATE:
@@ -159,9 +181,12 @@ void loop() {
                     analogWrite(channels[cNum].negativePump, PUMP_OFF);
 
                     // Solenoids
-                    digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_OPEN);
                     digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
-                    
+                    // Digitally "PWM" solenoid valve to slow infill
+                    digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_OPEN);
+                    delay(3);
+                    digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
+                    delay(3);
                     break; 
                     
                 case HOLD:
@@ -175,30 +200,29 @@ void loop() {
                     break;
                 
                 case DEFLATE:
-                    // Solenoids
                     digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
+
+                    /*
+                     * If you are at a high pressure, PWM the solenoid valve to slow deflate.
+                     * Otherwise, open negative valve fully to allow channel to reach
+                     * lowest possible pressure
+                     */
                     if (channels[cNum].currentPressure >= 12.28)
                     {
+                        analogWrite(channels[cNum].negativePump, PUMP_OFF);
                         digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_OPEN);
                         delay(2);
                         digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
                         delay(4);
                     }
-                    //else if (channels[cNum].currentPressure >= 12)
-                    //{
-                    //    digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_OPEN);
-                    //    delay(4);
-                    //    digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
-                    //    delay(2);
-                    // }
                     else
                     {
+                        analogWrite(channels[cNum].negativePump, PUMP_PWM_NEG);
                         digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_OPEN);
                     }
 
                     // Pumps
-                    analogWrite(channels[cNum].positivePump, PUMP_OFF);
-                    analogWrite(channels[cNum].negativePump, PUMP_PWM_NEG); 
+                    analogWrite(channels[cNum].positivePump, PUMP_OFF); 
                     break;
             }
         } 

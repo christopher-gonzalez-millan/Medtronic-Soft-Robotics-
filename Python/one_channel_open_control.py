@@ -117,13 +117,8 @@ class controllerThread(threading.Thread):
         finally:
             # global ser
             print('Controller thread teminated')
-<<<<<<< HEAD
             ser.close()
 
-=======
-            # ser.close()
-          
->>>>>>> abd7112 (bug fixes for 3 channel update)
     def get_id(self):
         # returns id of the respective thread
         if hasattr(self, '_thread_id'):

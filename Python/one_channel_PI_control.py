@@ -17,8 +17,7 @@ from csv_logger import CsvLogger
 from math import sin, pi
 from scipy import signal as sg
 
-# logging.basicConfig(level = logging.DEBUG)
-logging.basicConfig(filename = 'data.log', level = logging.WARNING,
+logging.basicConfig(filename = 'data.log', level = logging.WARNING, 
     format = '%(asctime)s,%(message)s')
 
 # create csv logging object to store the data collected
@@ -269,7 +268,8 @@ class controllerThread(threading.Thread):
 
         # Log all control variables if needed
         logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, z_des, z_act, P_des, P_act, k_p, k_i))
-        csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, z_des, z_act, P_des, P_act, k_p, k_i))
+        if logging.getLogger().getEffectiveLevel() == logging.INFO:
+            csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, z_des, z_act, P_des, P_act, k_p, k_i))
 
     def one_D_algorithm(self):
         '''
