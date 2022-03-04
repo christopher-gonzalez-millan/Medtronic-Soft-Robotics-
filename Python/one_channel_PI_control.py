@@ -13,6 +13,7 @@ from tkinter import *
 from tkinter import ttk
 from ttkthemes import ThemedStyle
 import logging
+import math
 
 # logging.basicConfig(level = logging.DEBUG)
 logging.basicConfig(filename = 'data.log', level = logging.WARNING,
@@ -32,6 +33,7 @@ dT = 0.125      # time between cycles (seconds) # TODO: find a way to clock the 
 int_sum = 0.0    # sum of the integral term # TODO: figure out if this should be a global value
 epsi_z_prev = 0.0 # error in z for the previous time step # TODO: figure out if this should be a global value
 k_i = 0.012         # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+start_time = 0      # start time for the ramp and sinusoid signals
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -170,8 +172,11 @@ class GUI:
         '''
         Start logging
         '''
+        global start_time
+
         if (status == "start"):
             logging.getLogger().setLevel(logging.INFO)
+            start_time = time.time()                    # start time for ramp and sinusoid signals
         elif (status == "stop"):
             logging.getLogger().setLevel(logging.WARNING)
         elif (status == "clear"):
@@ -201,6 +206,15 @@ class controllerThread(threading.Thread):
 
         finally:
             print('Controller thread teminated')
+    
+    def sinusoid_signal(self):
+        global start_time, z_des
+
+        current_time = time.time()
+
+        time_diff = current_time - start_time
+
+        z_des = math.sin()
 
     def one_D_main(self):
         '''
