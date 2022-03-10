@@ -21,19 +21,21 @@ Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 
 // I/O Pins
 //#define BUTTON  13
-#define POSITIVE_PUMP 3
-#define POSITIVE_SOLENOID 2 
-#define NEGATIVE_PUMP 5
-#define NEGATIVE_SOLENOID 4
-
+#define POSITIVE_PUMP 10
+#define POSITIVE_SOLENOID 12 
+#define NEGATIVE_PUMP 11
+#define NEGATIVE_SOLENOID 13
 #define SOLENOID_CLOSED LOW
 #define SOLENOID_OPEN HIGH
 #define PUMP_PWM_POS 100
 #define PUMP_PWM_NEG 100
+#define INFLATE_VALVE_HI 3.5
+#define DEFLATE_VALVE_HI 3
+#define VALVE_CYCLE_TIME 10
 #define HI_PRESSURE 13.0
 #define LOW_PRESSURE 11
 #define HOLD_TIME 5000  // in milliseconds
-#define SENSOR_ID 1
+#define SENSOR_ID 2
 
 // Possible States
 typedef enum {
@@ -235,20 +237,12 @@ void primary()
             }
             
             // Solenoids
-            // analogWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
-            // analogWrite(NEGATIVE_SOLENOID, SOLENOID_CLOSED);
-            analogWrite(7, SOLENOID_CLOSED);
-            analogWrite(8, SOLENOID_CLOSED);
-            // analogWrite(12, SOLENOID_CLOSED);
-            // analogWrite(13, SOLENOID_CLOSED);
+            analogWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
+            analogWrite(NEGATIVE_SOLENOID, SOLENOID_CLOSED);
             
             // Pumps
-            // analogWrite(POSITIVE_PUMP, 0);
-            // analogWrite(NEGATIVE_PUMP, 0);
-            analogWrite(6, 0);
-            analogWrite(9, 0);
-            // analogWrite(10, 0);
-            // analogWrite(11, 0);
+            analogWrite(POSITIVE_PUMP, 0);
+            analogWrite(NEGATIVE_PUMP, 0);
             
             if ((currentTime - startTime) > HOLD_TIME)
             {
@@ -262,21 +256,16 @@ void primary()
             disp_pressure(1000);
             
             // Solenoids
-            // digitalWrite(POSITIVE_SOLENOID, SOLENOID_OPEN);
-            // digitalWrite(NEGATIVE_SOLENOID, SOLENOID_CLOSED);
-            digitalWrite(7, SOLENOID_OPEN);
-            digitalWrite(8, SOLENOID_CLOSED);
-            // digitalWrite(12, SOLENOID_OPEN);
-            // digitalWrite(13, SOLENOID_CLOSED);
-            
+            digitalWrite(NEGATIVE_SOLENOID, SOLENOID_CLOSED);
+            digitalWrite(POSITIVE_SOLENOID, SOLENOID_OPEN);
+            delay(INFLATE_VALVE_HI);
+            digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
+            delay(VALVE_CYCLE_TIME - INFLATE_VALVE_HI);
+                       
             // Pumps
-            // analogWrite(POSITIVE_PUMP, PUMP_PWM_POS);
-            // analogWrite(NEGATIVE_PUMP, 0);
-            analogWrite(6, PUMP_PWM_POS);
-            analogWrite(9, 0);
-            // analogWrite(10, PUMP_PWM_POS);
-            // analogWrite(11, 0);
-      
+            analogWrite(POSITIVE_PUMP, PUMP_PWM_POS);
+            analogWrite(NEGATIVE_PUMP, 0);
+            
             tcaselect(SENSOR_ID);
             if ((mpr.readPressure() / 68.947572932) >= HI_PRESSURE) 
             {
@@ -298,20 +287,12 @@ void primary()
             }
             
             // Solenoids
-            // digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
-            // digitalWrite(NEGATIVE_SOLENOID, SOLENOID_CLOSED);
-            digitalWrite(7, SOLENOID_CLOSED);
-            digitalWrite(8, SOLENOID_CLOSED);
-            // digitalWrite(12, SOLENOID_CLOSED);
-            // digitalWrite(13, SOLENOID_CLOSED);
+            digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
+            digitalWrite(NEGATIVE_SOLENOID, SOLENOID_CLOSED);
             
             // Pumps
-            // analogWrite(POSITIVE_PUMP, 0);
-            // analogWrite(NEGATIVE_PUMP, 0);
-            analogWrite(6, 0);
-            analogWrite(9, 0);
-            // analogWrite(10, 0);
-            // analogWrite(11, 0);
+            analogWrite(POSITIVE_PUMP, 0);
+            analogWrite(NEGATIVE_PUMP, 0);
             
             if ((currentTime - startHoldTime) > HOLD_TIME)
             {
@@ -325,34 +306,24 @@ void primary()
             disp_pressure(1000);
 
             // Solenoids
-            // digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
-            // digitalWrite(NEGATIVE_SOLENOID, SOLENOID_OPEN);
             tcaselect(SENSOR_ID);
             if ( (mpr.readPressure() / 68.947572932) >= 12.1 )
             {
-              digitalWrite(7, SOLENOID_CLOSED);
-              digitalWrite(8, HIGH);
-              delay(3);
-              digitalWrite(8, LOW);
-              delay(10);
+              digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
+              digitalWrite(NEGATIVE_SOLENOID, HIGH);
+              delay(DEFLATE_VALVE_HI);
+              digitalWrite(NEGATIVE_SOLENOID, LOW);
+              delay(VALVE_CYCLE_TIME - DEFLATE_VALVE_HI);
             }
             else
             {
-              digitalWrite(7, SOLENOID_CLOSED);
-              digitalWrite(8, SOLENOID_OPEN);
+              digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
+              digitalWrite(NEGATIVE_SOLENOID, SOLENOID_OPEN);
             }
-            // digitalWrite(7, SOLENOID_CLOSED);      
-            // digitalWrite(8, SOLENOID_OPEN);
-            // digitalWrite(12, SOLENOID_CLOSED);
-            // digitalWrite(13, SOLENOID_OPEN);
             
             // Pumps
-            // analogWrite(POSITIVE_PUMP, 0);
-            // analogWrite(NEGATIVE_PUMP, PUMP_PWM_NEG);
-            analogWrite(6, 0);
-            analogWrite(9, PUMP_PWM_NEG);
-            // analogWrite(10, 0);
-            // analogWrite(11, PUMP_PWM_NEG);
+            analogWrite(POSITIVE_PUMP, 0);
+            analogWrite(NEGATIVE_PUMP, PUMP_PWM_NEG);
       
             tcaselect(SENSOR_ID);
             if ((mpr.readPressure() / 68.947572932) <= LOW_PRESSURE)       
