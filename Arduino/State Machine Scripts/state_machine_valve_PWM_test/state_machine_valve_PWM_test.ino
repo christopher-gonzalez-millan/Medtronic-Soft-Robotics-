@@ -47,7 +47,7 @@ float DEFLATE_VALVE_HI = 0;
 float DEFLATE_VALVE_LOW = 0;
 
 int TRAIL = 0;
-float CYCLE_TIME = 5000;
+float CYCLE_TIME = 15000;
 
 unsigned long currentTime = 0;
 unsigned long startTime = 0;
