@@ -28,8 +28,8 @@ Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 
 #define SOLENOID_CLOSED LOW
 #define SOLENOID_OPEN HIGH
-#define PUMP_PWM_POS 100
-#define PUMP_PWM_NEG 100
+#define PUMP_PWM_POS 255/2
+#define PUMP_PWM_NEG 255/2
 #define HI_PRESSURE 13.0
 #define LOW_PRESSURE 11
 #define HOLD_TIME 5000  // in milliseconds
