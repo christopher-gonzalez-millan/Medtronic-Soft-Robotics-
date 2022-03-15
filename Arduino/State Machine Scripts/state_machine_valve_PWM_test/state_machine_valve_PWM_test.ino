@@ -35,16 +35,19 @@ Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 
 //defining
 #define ATMOSPHERIC_PRESSURE 12.1
-#define HI_PRESSURE 13.0
-#define LOW_PRESSURE 11
-#define HOLD_TIME 5000  // in milliseconds
+#define HI_PRESSURE 13.2
+#define LOW_PRESSURE 9
+#define HOLD_TIME 100 // in milliseconds
 #define SENSOR_ID 2
 
 //simulate valve pwm values
-#define INFLATE_VALVE_HI 3
-#define DEFLATE_VALVE_HI 2
+float INFLATE_VALVE_HI = 0;
+float INFLATE_VALVE_LOW = 0;
+float DEFLATE_VALVE_HI = 0;
+float DEFLATE_VALVE_LOW = 0;
+
 int TRAIL = 0;
-float CYCLE_TIME = 10;
+float CYCLE_TIME = 5000;
 
 unsigned long currentTime = 0;
 unsigned long startTime = 0;
@@ -71,11 +74,15 @@ void setup() {
  * @desc  called indefinitely
  */
 void loop() {    
-    for(int i = 0; i <= 100; i+=5){
+    for(int i = 100; i >= 0; i-=5){
         TRAIL = i;
+        INFLATE_VALVE_HI = CYCLE_TIME*(TRAIL*0.01);
+        INFLATE_VALVE_LOW = CYCLE_TIME - INFLATE_VALVE_HI;
+        DEFLATE_VALVE_HI = CYCLE_TIME*(TRAIL*0.01);
+        DEFLATE_VALVE_LOW = CYCLE_TIME - DEFLATE_VALVE_HI;
         
         if(reset()){
-          Serial.print("Start of Trail "); Serial.print(TRAIL); Serial.println(":");
+          Serial.print("Start of Trail, "); Serial.println(TRAIL);
         }
         float x = getPressure();
 
@@ -88,7 +95,7 @@ void loop() {
           x = getPressure();
         }
         
-        Serial.print("Inflate(ms): "); Serial.println(millis() - startTime);
+        Serial.print("Inflate(ms), "); Serial.println(millis() - startTime);
         hold;
         delay(HOLD_TIME);
         
@@ -101,7 +108,7 @@ void loop() {
           x = getPressure();
         }
         
-        Serial.print("Deflate(ms): "); Serial.println(millis() - startTime);
+        Serial.print("Deflate(ms), "); Serial.println(millis() - startTime);
         hold;
         delay(HOLD_TIME);
     }
@@ -235,9 +242,9 @@ void inflate(){
     // Solenoids
     digitalWrite(NEGATIVE_SOLENOID, SOLENOID_CLOSED);
     digitalWrite(POSITIVE_SOLENOID, SOLENOID_OPEN);
-    delay(INFLATE_VALVE_HI);
+    delayMicroseconds(INFLATE_VALVE_HI);
     digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
-    delay(CYCLE_TIME*(TRAIL*0.01));
+    delayMicroseconds(INFLATE_VALVE_LOW);
 
     // Pumps
     analogWrite(POSITIVE_PUMP, PUMP_PWM_POS);
@@ -249,9 +256,9 @@ void deflate(){
     {
       digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
       digitalWrite(NEGATIVE_SOLENOID, HIGH);
-      delay(DEFLATE_VALVE_HI);
+      delayMicroseconds(DEFLATE_VALVE_HI);
       digitalWrite(NEGATIVE_SOLENOID, LOW);
-      delay(CYCLE_TIME*(TRAIL*0.01));
+      delayMicroseconds(DEFLATE_VALVE_LOW);
     }
     else
     {
