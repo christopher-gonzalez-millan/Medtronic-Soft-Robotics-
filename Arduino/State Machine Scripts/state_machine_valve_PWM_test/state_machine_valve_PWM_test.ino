@@ -46,8 +46,8 @@ float INFLATE_VALVE_LOW = 0;
 float DEFLATE_VALVE_HI = 0;
 float DEFLATE_VALVE_LOW = 0;
 
-int TRAIL = 0;
-float CYCLE_TIME = 15000;
+int TRIAL = 0;
+float CYCLE_TIME = 5000;
 
 unsigned long currentTime = 0;
 unsigned long startTime = 0;
@@ -75,14 +75,14 @@ void setup() {
  */
 void loop() {    
     for(int i = 100; i >= 0; i-=5){
-        TRAIL = i;
-        INFLATE_VALVE_HI = CYCLE_TIME*(TRAIL*0.01);
+        TRIAL = i;
+        INFLATE_VALVE_HI = CYCLE_TIME*(TRIAL*0.01);
         INFLATE_VALVE_LOW = CYCLE_TIME - INFLATE_VALVE_HI;
-        DEFLATE_VALVE_HI = CYCLE_TIME*(TRAIL*0.01);
+        DEFLATE_VALVE_HI = CYCLE_TIME*(TRIAL*0.01);
         DEFLATE_VALVE_LOW = CYCLE_TIME - DEFLATE_VALVE_HI;
         
         if(reset()){
-          Serial.print("Start of Trail, "); Serial.println(TRAIL);
+          Serial.print("Start of Trial, "); Serial.println(TRIAL);
         }
         float x = getPressure();
 
@@ -252,19 +252,11 @@ void inflate(){
 }
 
 void deflate(){
-    if (getPressure() >= 12.1)
-    {
-      digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
-      digitalWrite(NEGATIVE_SOLENOID, HIGH);
-      delayMicroseconds(DEFLATE_VALVE_HI);
-      digitalWrite(NEGATIVE_SOLENOID, LOW);
-      delayMicroseconds(DEFLATE_VALVE_LOW);
-    }
-    else
-    {
-      digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
-      digitalWrite(NEGATIVE_SOLENOID, SOLENOID_OPEN);
-    }
+    digitalWrite(POSITIVE_SOLENOID, SOLENOID_CLOSED);
+    digitalWrite(NEGATIVE_SOLENOID, HIGH);
+    delayMicroseconds(DEFLATE_VALVE_HI);
+    digitalWrite(NEGATIVE_SOLENOID, LOW);
+    delayMicroseconds(DEFLATE_VALVE_LOW);
 
     // Pumps
     analogWrite(POSITIVE_PUMP, 0);
