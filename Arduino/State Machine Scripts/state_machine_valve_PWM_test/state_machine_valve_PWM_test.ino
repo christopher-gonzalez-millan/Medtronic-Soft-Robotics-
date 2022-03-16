@@ -82,7 +82,7 @@ void loop() {
         DEFLATE_VALVE_LOW = CYCLE_TIME - DEFLATE_VALVE_HI;
         
         if(reset()){
-          Serial.print("Start of Trial, "); Serial.println(TRIAL);
+          Serial.print("Start of Trial, "); Serial.print(TRIAL); Serial.print(", ");
         }
         float x = getPressure();
 
@@ -95,7 +95,7 @@ void loop() {
           x = getPressure();
         }
         
-        Serial.print("Inflate(ms), "); Serial.println(millis() - startTime);
+        Serial.print("Inflate(ms), "); Serial.print(millis() - startTime); Serial.print(", ");
         hold;
         delay(HOLD_TIME);
         
@@ -108,7 +108,7 @@ void loop() {
           x = getPressure();
         }
         
-        Serial.print("Deflate(ms), "); Serial.println(millis() - startTime);
+        Serial.print("Deflate(ms), "); Serial.print(millis() - startTime); Serial.println(", ");
         hold;
         delay(HOLD_TIME);
     }
