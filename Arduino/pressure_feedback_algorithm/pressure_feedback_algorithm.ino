@@ -28,8 +28,8 @@
  * in order to cause a state transition from HOLD to DEFLATE or INFLATE
  *
  */
-#define PRESSURE_TOLERANCE 0.01
-#define PRESSURE_HOLD_TOLERANCE 0.05
+#define PRESSURE_TOLERANCE 0.15
+#define PRESSURE_HOLD_TOLERANCE 0.15
 
 // I/O related defines
 #define SOLENOID_CLOSED LOW
@@ -39,8 +39,9 @@
  * This is the lowest operable analog value for our pumps.
  * 110/255 * 5V = 2.15V Sent to pump
  */
-#define PUMP_PWM_POS 110
-#define PUMP_PWM_NEG 110
+#define PUMP_PWM_POS 150
+#define PUMP_PWM_NEG 150
+// TODO FIXME!! 110 for channel2, 95 for channel0
 #define PUMP_OFF 0
 
 // Serial related defines
@@ -83,9 +84,9 @@ struct channelData
 
 channelData channels[NUM_CHANNELS] =
 {
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 3,  5,  2,  4},  // Channel 0
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 6,  9,  7,  8},  // Channel 1
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10, 11, 12, 13}, // Channel 2
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 12, 11, 52, 53},  // Channel 0
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10,  9, 50, 51},  // Channel 1
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 8,   7, 48, 49}, // Channel 2
 };
 
 /*
@@ -179,14 +180,14 @@ void loop() {
                     // Pumps
                     analogWrite(channels[cNum].positivePump, PUMP_PWM_POS);
                     analogWrite(channels[cNum].negativePump, PUMP_OFF);
-
-                    // Solenoids
                     digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
-                    // Digitally "PWM" solenoid valve to slow infill
+
+                    //
                     digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_OPEN);
-                    delay(3);
-                    digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
-                    delay(3);
+                    // delayMicroseconds(.45*5000);
+                    // digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
+                    // delayMicroseconds(.55*5000);
+                    
                     break; 
                     
                 case HOLD:
@@ -200,29 +201,17 @@ void loop() {
                     break;
                 
                 case DEFLATE:
+                    // Solenoids
                     digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
+                    analogWrite(channels[cNum].positivePump, PUMP_OFF);
+                    analogWrite(channels[cNum].negativePump, PUMP_PWM_NEG); 
 
-                    /*
-                     * If you are at a high pressure, PWM the solenoid valve to slow deflate.
-                     * Otherwise, open negative valve fully to allow channel to reach
-                     * lowest possible pressure
-                     */
-                    if (channels[cNum].currentPressure >= 12.28)
-                    {
-                        analogWrite(channels[cNum].negativePump, PUMP_OFF);
-                        digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_OPEN);
-                        delay(2);
-                        digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
-                        delay(4);
-                    }
-                    else
-                    {
-                        analogWrite(channels[cNum].negativePump, PUMP_PWM_NEG);
-                        digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_OPEN);
-                    }
+                    // 
+                    digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_OPEN);
+                    // delayMicroseconds(.35*5000);
+                    // digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
+                    // delayMicroseconds(.65*5000);
 
-                    // Pumps
-                    analogWrite(channels[cNum].positivePump, PUMP_OFF); 
                     break;
             }
         } 

@@ -3,8 +3,8 @@
  * @author  CU Boulder Medtronic Team 7
  * @brief   Basic 1D proportional controller
 '''
-from NDISensor import NDISensor
-from arduino_control import arduino_control
+from NDI_Code.NDISensor import NDISensor
+from Py_Arduino_Communication.arduino_control import arduino_control
 import threading
 from queue import Queue
 import ctypes
@@ -28,7 +28,7 @@ csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
 # Init EM Nav and Arduino
 ndi = NDISensor.NDISensor()
 arduino = arduino_control.arduino()
-arduino.selectChannels(arduino.OFF, arduino.ON, arduino.OFF)
+arduino.selectChannels(arduino.ON, arduino.OFF, arduino.OFF)
 
 # Parameters for controller
 z_des = 40.0     # stores the desired z position input by user
@@ -230,7 +230,7 @@ class controllerThread(threading.Thread):
 
         A = 5       # amplitude of the sine signal [mm]
         C = 60      # offset of the sine function [mm]
-        f = .075     # frequency of the signal [Hz]
+        f = .1     # frequency of the signal [Hz]
 
         z_des = A*sin(2*pi*f*time_diff) + C      # resulting sinusoidal z_des [mm]
 
@@ -241,9 +241,9 @@ class controllerThread(threading.Thread):
     
         time_diff = current_time - start_time   # time difference used for the signal
 
-        A = (90 - 50)/2                         # amplitude of the ramp signal
-        C = (90 - 50)/2 + 50                    # shifts the signal up to range of 50 mm to 90 mm
-        T = 60                                # period of the signal in seconds
+        A = (80 - 50)/2                         # amplitude of the ramp signal
+        C = (80 - 50)/2 + 50                    # shifts the signal up to range of 50 mm to 90 mm
+        T = 30                                # period of the signal in seconds
 
         z_des = A*sg.sawtooth((2*pi/T)*time_diff, width = 0.5) + C       # ramp signal set as a triangle wave           
 
@@ -254,7 +254,7 @@ class controllerThread(threading.Thread):
         global P_act, z_act, time_diff, csv_logger
 
         # get the actual pressure from the pressure sensor
-        P_act = arduino.getActualPressure(arduino.channel1)
+        P_act = arduino.getActualPressure(arduino.channel0)
 
         # get actual position from EM sensor
         position = ndi.getPositionInRange()
@@ -326,7 +326,7 @@ class controllerThread(threading.Thread):
             # higher limit of the pressure we are sending into the controller
             P_des = 13.25
 
-        arduino.sendDesiredPressure(arduino.channel1, P_des)
+        arduino.sendDesiredPressure(arduino.channel0, P_des)
 
 
     def handleGUICommand(self, newCmd):

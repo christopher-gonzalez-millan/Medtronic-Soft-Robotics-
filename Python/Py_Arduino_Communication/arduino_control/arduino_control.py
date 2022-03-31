@@ -73,7 +73,7 @@ class arduino:
     def startCommunication(self):
         # Open Serial to Arduino
         self.ser.baudrate = 115200
-        self.ser.port = getPort('Serial')[0]
+        self.ser.port = getPort('Arduino')[0]
         self.ser.open()
         if (self.ser.is_open != True):
             print("Could not open serial")
