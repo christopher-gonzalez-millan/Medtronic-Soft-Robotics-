@@ -11,23 +11,23 @@ close all
 
 %% Find all the csv files in the directory and obtain the data
 % specify directory of interest
-files = dir('2-28-22\*.xlsx');
+files = dir('3-30-22\*.xlsx');
 
 % get data from all the files in the directory
-[time_plot, x_des, x_act] = get_data(files);
+[time_meas, time_plot, x_des, x_act] = get_data(files);
 
 %% Plot the reference and tracked signals for the ramp input signal
 % specify lower and upper bounds of the ramp
-ramp_low_bd = [50, 50, 50];
-ramp_up_bd = [90, 90, 90];
+ramp_low_bd = [50, 50];
+ramp_up_bd = [80, 80];
 
 % specify the periods of the ramp
-ramp_period = [120, 60, 20];
+ramp_period = [20, 30];
 
 % plot the ramp signals
-ramp_time = [time_plot(1), time_plot(3), time_plot(2)];         % reorganize ramp data
-ramp_x_des = [x_des(1), x_des(3), x_des(2)];
-ramp_x_act = [x_act(1), x_act(3), x_act(2)];
+ramp_time = [time_meas(1), time_meas(2)];         % reorganize ramp data
+ramp_x_des = [x_des(1), x_des(2)];
+ramp_x_act = [x_act(1), x_act(2)];
 
 ramp_plotter_func(ramp_time, ramp_x_des, ramp_x_act, ramp_period, ramp_low_bd, ramp_up_bd);
 
@@ -40,14 +40,14 @@ sin_up_bd = [80 65 80];
 sin_freq = [0.05, 0.075, 0.1];
 
 % plot the sinusoid signals for f = 0.05, 0.075, 0.1
-sinusoid_plotter_func(time_plot(4:6), x_des(4:6), x_act(4:6), sin_freq, sin_low_bd, sin_up_bd);
+% sinusoid_plotter_func(time_plot(4:6), x_des(4:6), x_act(4:6), sin_freq, sin_low_bd, sin_up_bd);
 
 % plot the second set of sinusoid signals for f = 0.2, 0.5, 1
 sin_low_bd = [70 70 70];
 sin_freq = [0.2, 0.5, 1];
 sin_up_bd = [80 80 80];
 
-sinusoid_plotter_func(time_plot(7:9), x_des(7:9), x_act(7:9), sin_freq, sin_low_bd, sin_up_bd);
+% sinusoid_plotter_func(time_plot(7:9), x_des(7:9), x_act(7:9), sin_freq, sin_low_bd, sin_up_bd);
 
 
 % < ===================================================================== >
@@ -86,7 +86,7 @@ end
 
 
 %% Function to iterate over files to read information in each file
-function [time_plot, x_des, x_act] = get_data(files)
+function [time_meas, time_plot, x_des, x_act] = get_data(files)
 % Description: This function reads all the data from a single directory and
 % stores the data into cells
 % Inputs: the files object that carries the information about the
@@ -95,17 +95,18 @@ function [time_plot, x_des, x_act] = get_data(files)
 % (time_plot), the actual and desired positions (x_act, x_des)
 
 % Initialize cells to store the values from the experiments
-date = {}; min = {}; sec = {}; millis = {}; samples = {}; x_des = {}; x_act = {}; P_des = {}; P_act = {}; k_prop = {}; k_int = {};
+date = {}; min = {}; sec = {}; millis = {}; time_meas = {}; samples = {}; x_des = {}; x_act = {}; P_des = {}; P_act = {}; k_prop = {}; k_int = {};
 
 % loop through the files and store the respective values
 for i=1:length(files)
     filename = strcat(files(i).folder, '\', files(i).name);
-    [d, m, s, ms, samp, x_d, x_a, P_d, P_a, k_p, k_i]...
+    [d, m, s, ms, time_m, samp, x_d, x_a, P_d, P_a, k_p, k_i]...
         = readvars(filename); 
     date(i) = {d};                  % date
     min(i) = {m};                   % minutes
     sec(i) = {s};                   % seconds
     millis(i) = {ms};               % milliseconds
+    time_meas(i) = {time_m};        % time measured using the csv file
     samples(i) = {samp};            % sample number
     x_des(i) = {x_d};               % desired positions
     x_act(i) = {x_a};               % actual positions
