@@ -9,9 +9,6 @@ import threading
 from queue import Queue
 import ctypes
 import time
-from tkinter import *
-from tkinter import ttk
-from ttkthemes import ThemedStyle
 import logging
 from csv_logger import CsvLogger
 from math import sin, pi
