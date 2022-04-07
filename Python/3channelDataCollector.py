@@ -1,118 +1,79 @@
-from NDISensor import NDISensor
-import serial as pys
+'''
+ * @file    circle.py
+ * @author  CU Boulder Medtronic Team 7
+ * @brief   Theortically will move the robot in a circle 
+'''
+from Py_Arduino_Communication.arduino_control import arduino_control
 import time
-import csv
-import datetime
-import os
+import logging
+from csv_logger import CsvLogger
 
-"""Data Acquisition Variables:
+header = ['Date', 'Elpased Time', 'PSI0', 'PSI1', 'PSI2', 'X Position', 'Y Position' , 'Z Position']
+csv_logger = CsvLogger(filename='data.csv',
+                        level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
 
-These will need to be change for diffretnt expirment setups
-"""
-#output file
-print('Please enter file name: ')
-fileName = input()
-fileName  = fileName + '.csv'
-headerRow = ['Time', 'Theoretical PSI', 'Actual PSI', 'X Position', 'Y Position' , 'Z Position']
-
-#soft robot
-deafaultPressure = 12.25
-pressureDelta = .05
-stabilizationTime = 10 #this number is in seconds.
-maxPressure = 13.25
-minPressure = 11.5
-readCommand = '9999'
-
-
-"""Setup Variables
-
-These varibale will hopefully never need to be changed
-"""
+# Init EM Nav and Arduino
 ndi = NDISensor.NDISensor()
-ser = pys.Serial()
-ser.baudrate = 115200
-#TODO find a way to automate finding the COM port.
-ser.port = 'COM3'
+arduino = arduino_control.arduino()
+arduino.selectChannels(arduino.ON, arduino.OFF, arduino.ON)
 
-"""Helper Functions:
-"""
-def floatToCommand(float):
-    float = round(float, 2)       # round desired pressure to 2 decimal points
-    lessThanTen = False                     # checks to see if the P_des is less than 10
+startTime = time.time()
 
-    if float < 10.0:
-        lessThanTen = True
+minPSI = 14.0
+maxPSI = 15.5
+psiRange = (maxPSI - minPSI) / 0.1
+psiDelta = 0.1
 
-    temp = str(float)
-    temp = temp.replace('.', '')
+def changePSI(channelNum, psi):
+    if channelNum == 0:
+        arduino.sendDesiredPressure(arduino.channel0, psi)
+    elif channelNum == 1:
+        arduino.sendDesiredPressure(arduino.channel1, psi)
+    elif channelNum == 2:
+        arduino.sendDesiredPressure(arduino.channel2, psi)
+    else:
+        print('invalid channel')
+        
+def collectData():
+    #time data
+    time_diff = time.time() - startTime
+    
+    #channel pressure data
+    psi0 = arduino.getActualPressure(arduino.channel0)
+    psi1 = arduino.getActualPressure(arduino.channel1)
+    psi2 = arduino.getActualPressure(arduino.channel2)
 
-    if lessThanTen:
-        temp = '0' + temp
-
-    if len(temp) == 3:
-        temp = temp + '0'
-
-    return temp
-
-
-""" This should be MAIN but im lazy right now.
-"""
-# Open and check serial
-ser.open()
-time.sleep(5)
-if (not ser.is_open):
-    print("Serial Port Could not be Opened")
-    quit()
-
-with open(fileName, 'w', newline='') as csvfile:
-    writer = csv.DictWriter(csvfile, fieldnames=headerRow)
-    writer.writeheader()
-
-    #first set up expiremnt
-    bytesSent = ser.write(floatToCommand(minPressure).encode('utf-8'))
-    deafaultPressure = minPressure
-    print("pressure set at: {}".format(deafaultPressure))
-    time.sleep(stabilizationTime)
-
-
-    while(deafaultPressure < maxPressure):
-        tempData = {}
-
-        #gather the current infromation about the current state of the robot
-
-        #what the PSI should be
-        tempData['Theoretical PSI'] = deafaultPressure
-        print('Desired Pressure: ', deafaultPressure)
-        # time of this state
-        tempData['Time'] = datetime.datetime.now().strftime('%H:%M:%S')
-
-        # store the 3 cartesian positions of the robot
-        try:
-            position = ndi.getPosition()
-            tempData['X Position'] = position.deltaX
-            tempData['Y Position'] = position.deltaY
-            tempData['Z Position'] = position.deltaZ
-
-            #find what the actual psi of the system is
-            ser.write(readCommand.encode('utf-8'))# tell arduino we want a psi
-            time.sleep(0.2)
-            actualPSI = float(ser.readline().decode("utf-8"))
-            tempData['Actual PSI'] = actualPSI
-            print('Actual Pressure: ', actualPSI)
-            print('x position: ', position.deltaX)
-
-            print("writing data to CSv")
-            writer.writerow(tempData)
-
-            #change the state the robot is in
-            deafaultPressure += pressureDelta
-            bytesSent = ser.write(floatToCommand(deafaultPressure).encode('utf-8'))
-            time.sleep(stabilizationTime)
-
-        except:
-            print("There was an issue with NDISensor's parser")
+    
+    position = ndi.getPosition()
+    X = position.deltaX
+    Y = position.deltaY
+    Z = position.deltaZ
+    csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, psi0, psi1, psi2, X, Y, Z))
+        
+while True:
+    #start first channel at max
+    changePSI(0, maxPSI)
+    time.sleep(0.5)
+    collectData()
+    
+    for increaseChannel, decreaseChannel in zip([1,2,0], range(0,3)): 
+        #increase channel
+        for i in range(psiRange):
+            psi = minPSI + (psiDelta * i)
+            changePSI(increaseChannel, psi)
+            time.sleep(0.5)
+            collectData()
+    
+        #decrease channel
+        for i in range(psiRange):
+            psi = maxPSI - (psiDelta * i)
+            changePSI(decreaseChannel, psi)
+            time.sleep(0.5)
+            collectData()
+    
+    changePSI(0, minPSI)
+    time.sleep(0.5)
+    collectData()
 
 
-ser.write(floatToCommand(12.25).encode('utf-8'))
-print("Done collecting data")
-ser.close()
+print('Elapsed Time: {}'.format(time.time() - startTime))

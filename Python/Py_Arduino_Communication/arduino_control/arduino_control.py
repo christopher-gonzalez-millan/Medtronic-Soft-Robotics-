@@ -150,6 +150,7 @@ class arduino:
 
     def close(self):
         # Send command to reset to default pressure before terminating
+        print("Closing Arduino Connection")
         if self.c0_enabled:
             self.sendDesiredPressure(self.channel0, DEFAULT_PRESSURE_PSI)
         if self.c1_enabled:

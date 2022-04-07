@@ -23,15 +23,15 @@ csv_logger = CsvLogger(filename=filename,
 # Init EM Nav and Arduino
 # ndi = NDISensor.NDISensor()
 arduino = arduino_control.arduino()
-arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
+arduino.selectChannels(arduino.ON, arduino.OFF, arduino.ON)
 startTime = time.time()
 psi = 14.0
-maxPSI = 16
-
+maxPSI = 15.6
+arduino.sendDesiredPressure(arduino.channel2, 15.7)
 while (psi <= maxPSI):
     #change pressure
      # seconds
-    arduino.sendDesiredPressure(arduino.channel2, psi)
+    arduino.sendDesiredPressure(arduino.channel0, psi)
     time.sleep(1)
 
     time_diff = time.time() - startTime
@@ -47,5 +47,5 @@ while (psi <= maxPSI):
     csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, psi, psi0, psi1, psi2))
 
     psi += 0.1 #increase psi for next channel
-    
-arduino.sendDesiredPressure(arduino.channel1, 12.0)
+
+arduino.sendDesiredPressure(arduino.channel2, 12.0)
