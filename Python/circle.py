@@ -12,21 +12,21 @@ arduino = arduino_control.arduino()
 arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
 
 startTime = time.time()
-sleep = 0.2
+sleep = 4
 
 #c0
 minPSI0 = 14.0
-maxPSI0 = 15.6
+maxPSI0 = 15.4
 psiRange0 =int( (maxPSI0 - minPSI0) / 0.1)
 psiDelta0 = 0.1
 #c1
 minPSI1 = 14.0
-maxPSI1 = 14.7
+maxPSI1 = 15.4
 psiRange1 =int( (maxPSI1 - minPSI1) / 0.1)
 psiDelta1 = 0.1
 #c2
 minPSI2 = 14.0
-maxPSI2 = 14.8
+maxPSI2 = 15.4
 psiRange2 =int( (maxPSI2 - minPSI2) / 0.1)
 psiDelta2 = 0.1
 
@@ -35,6 +35,7 @@ arduino.sendDesiredPressure(arduino.channel1, 12.0)
 arduino.sendDesiredPressure(arduino.channel2, 12.0)
 
 try:
+    
     #start first channel at max
     arduino.sendDesiredPressure(arduino.channel0, maxPSI0)
     time.sleep(sleep)
@@ -57,7 +58,7 @@ try:
         time.sleep(sleep)
         print('actual psi: {}'.format(arduino.getActualPressure(arduino.channel0)))
     arduino.sendDesiredPressure(arduino.channel0, 12.25)
-        
+    
     #increase third channel
     print("")
     print("channel 2 increase")
@@ -90,7 +91,6 @@ try:
         arduino.sendDesiredPressure(arduino.channel0, psi) 
         time.sleep(sleep)
         print('actual psi: {}'.format(arduino.getActualPressure(arduino.channel0)))
-    
         
     #decrease third channel
     print("")
@@ -101,8 +101,6 @@ try:
         arduino.sendDesiredPressure(arduino.channel2, psi)
         time.sleep(sleep)
         print('actual psi: {}'.format(arduino.getActualPressure(arduino.channel2)))
-    arduino.sendDesiredPressure(arduino.channel2, 12.25)
-
     
     arduino.sendDesiredPressure(arduino.channel0, minPSI0)
 except:
