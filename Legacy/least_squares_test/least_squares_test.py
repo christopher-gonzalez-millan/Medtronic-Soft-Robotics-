@@ -25,6 +25,10 @@ B = np.array([[5, 11, -21], [12, 19, 0]])
 C = A.dot(B)
 # print(C)
 
+# matrix elememt multiplication
+A_ele = A*A
+# print(A_ele)
+
 # transpose of matrix
 A_trans = A.transpose()
 # print(A_trans)
@@ -80,3 +84,14 @@ print(t_stop - t_start)
 e2 = A.dot(res2.x)
 print("Recalculated e vector solution (bounded): ")
 print(e2)
+
+# perform the dot product solution
+x = A[:, 2]
+epsi = np.dot(b, x)
+print("Dot product solution: ")
+print(epsi)
+
+# test code to see how Python loops work
+for i in range(len(b)):
+    b[i] = 1
+    print(b[i])
