@@ -14,8 +14,10 @@ from tkinter import ttk
 from ttkthemes import ThemedStyle
 import logging
 from csv_logger import CsvLogger
-from math import sin, pi
+from math import sin, pi, sqrt
 from scipy import signal as sg
+import scipy.optimize as sp_opt
+import numpy as np
 
 logging.basicConfig(filename = 'data.log', level = logging.WARNING, 
     format = '%(asctime)s,%(message)s')
@@ -33,15 +35,21 @@ arduino.selectChannels(arduino.ON, arduino.OFF, arduino.OFF)
 # Parameters for controller
 z_des = 40.0     # stores the desired z position input by user
 z_act = 0.0     # actual z_position from EM sensor
-k_p = .012       # proportional controller gain
-P_act = 0.0     # actual pressure read from the pressure sensor
-P_des = 12.0    # desired pressure we're sending to the Arduino
-dT = 0.125      # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value
-int_sum = 0.0    # sum of the integral term # TODO: figure out if this should be a global value
-epsi_z_prev = 0.0 # error in z for the previous time step # TODO: figure out if this should be a global value
-k_i = 0.012         # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
 start_time = 0      # start time for the ramp and sinusoid signals
 time_diff = 0       # time difference betweeen the start and current times
+
+# Parameters for the 3 channel controller
+P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to the Arduino (c0, c1, c2)
+P_act = np.array([0.0, 0.0, 0.0])           # actual pressure read from the pressure sensor (c0, c1, c2)
+r_des = np.array([0.0, 0.0])                # desired position of robot in form (x, y)
+r_act = np.array([0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
+k_p = np.array([.012, .012, .012])          # proportional controller gain for c0, c1, c2
+k_i = np.array([.012, .012, .012])          # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+dT = np.array([0.125, 0.125, 0.125])        # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)
+int_sum = np.array([0.0, 0.0, 0.0])         # sum of the integral term # TODO: figure out if this should be a global value
+err_r = np.array([0.0, 0.0])                # error between measured position and actual position
+epsi = np.array([0.0, 0.0, 0.0])            # stores the solution to the force vector algorithm
+epsi_prev = np.array([0.0, 0.0, 0.0])       # modified error in r (after force vector solution) for the previous time step # TODO: figure out if this should be a global value
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -52,6 +60,7 @@ class command:
         self.id = id
         self.field1 = field1
         self.field2 = field2
+
 
 class GUI:
     '''
@@ -212,7 +221,8 @@ class controllerThread(threading.Thread):
                     newCmd = commandsFromGUI.get()
                     self.handleGUICommand(newCmd)
 
-                self.one_D_main()
+                # self.one_D_main()
+                self.three_channel_algorithm()
                 time.sleep(.07)
 
         finally:
@@ -316,85 +326,112 @@ class controllerThread(threading.Thread):
 
     def three_channel_main(self):
         '''
-        main function used in thread to perform 1D algorithm
+        main function used in thread to perform 3 channel algorithm
         '''
-        global P_act, z_act, time_diff, csv_logger
+        global P_act, r_act, csv_logger
 
         # get the actual pressure from the pressure sensor
-        P_act = arduino.getActualPressure(arduino.channel0)
+        P_act[0] = arduino.getActualPressure(arduino.channel0)
+        P_act[1] = arduino.getActualPressure(arduino.channel1)
+        P_act[2] = arduino.getActualPressure(arduino.channel2)
 
         # get actual position from EM sensor
         position = ndi.getPositionInRange()
-        z_act = position.deltaX
+        r_act[0] = position.deltaX          # x dim
+        r_act[1] = position.deltaY          # y dim
 
-        # perform 1D proportional control
-        self.one_D_algorithm()
+        # perform 3 channel control algorithm
+        self.three_channel_algorithm()
 
         # send the desired pressure into Arduino
         self.sendDesiredPressure()
 
-        # Log all control variables if needed
-        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, z_des, z_act, P_des, P_act, k_p, k_i))
+        # Log all control variables if needed / TODO: find out how to re-implement time_diff variable
+        # TODO: figure out if logging works with vectors/matrices
+        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
         if logging.getLogger().getEffectiveLevel() == logging.INFO:
-            csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, z_des, z_act, P_des, P_act, k_p, k_i))
+            csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
 
     def three_channel_algorithm(self):
         '''
         Proportional/PI feedback loop algorithm (vector based solution -- includes dot product and bounded least squares solution)
         '''
-        global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i, start_time
+        global r_des, r_act, err_r, P_des, P_act, k_p, k_i, dT, int_sum, epsi_prev, start_time
 
-        if start_time > 0:
-            # self.ramp_signal()
-            self.sinusoid_signal()
+        # if start_time > 0:
+        #     # self.ramp_signal()
+        #     self.sinusoid_signal()
 
         # Calculate the error between current and desired positions
-        epsi_z = z_des - z_act
+        err_r = r_des - r_act
 
-        # Calculate the integral sum
-        int_sum = int_sum + 0.5*(epsi_z + epsi_z_prev)*dT
-        if int_sum > 3:
-            int_sum = 3
-        elif int_sum < -3:
-            int_sum = -3
+        # perform force vector calculations
+        self.forceVectorCalc()
 
-        # < -------- Shalom P_absolute method --------- >
-        # Utilize the proportional and integral controller values for P_des
-        # P_des = k_p*epsi_z + k_i*int_sum
+        # Calculate the integral sum for integral control
+        int_sum = int_sum + 0.5*(epsi + epsi_prev)*dT               # these are all element-wise operations / TODO: check the matrix math here
+        for i in range(len(int_sum)):                               # checks the integral sum to see if it's in range (hardcoded integral windup)
+            if int_sum[i] > 3:
+                int_sum[i] = 3
+            elif int_sum[i] < -3:
+                int_sum[i] = -3
 
-        # logging.debug("P_des: ", self.P_des)
-
-        # < ------- Our feedback method --------- >
-        del_P_des = k_p * epsi_z + k_i*(int_sum)
+        # < ------- Feedback controller --------- >
+        del_P_des = k_p*epsi + k_i*(int_sum)                    # should be element-wise operations / TODO: check the matrix math here
         P_des = P_act + del_P_des
-
-        # < -------- Shalom delta P method ------- >
-        # Figure out how to utilize del_P_act instead of P_des (on Arduino side?)
-        # del_P_des = k_p*epsi_z
-        # P_des = P_o + del_P_des
-        # del_P_act = P_des - P_act
 
         # Check for windup of the integrator
         # if (P_des >= 13.25) or (P_des <= 9.0):
         #     P_des = k_p*epsi_z
 
-        # Update the error value for next iteration of epsi_z_prev
-        epsi_z_prev = epsi_z
+        # Update the error value for next iteration of epsi_prev
+        epsi_prev = epsi
+
+    def forceVectorCalc(self):
+        '''
+        calculates the force vector solution for the controller given the error vector and the unit vectors of each channel
+        '''
+        global err_r, epsi
+
+        # <----- Bounded least squares implementation ----->
+        # array that contains C1, C2, C3 unit vectors
+        A = np.array([[sqrt(3)/2, -sqrt(3)/2, 0], [1/2, 1/2, -1]])
+
+        # perform unbounded least squares
+        sol = sp_opt.lsq_linear(A, err_r)
+
+        # return the solution to the optimization (m, n, p)
+        epsi = sol.x
+
+        # <----- Dot product method ----->
+        # develop channel unit vectors
+        C0 = A[:, 0]
+        C1 = A[:, 1]
+        C2 = A[:, 2]
+
+        # dot product of error vector along the channel vectors
+        epsi[0] = np.dot(err_r, C0)
+        epsi[1] = np.dot(err_r, C1)
+        epsi[2] = np.dot(err_r, C2)
 
     def sendDesiredPressure(self):
         '''
         convert P_des and send this pressure into the Arduino
         '''
         global P_des
-        if P_des < 9.0:
-            # lower limit of the pressure we are sending into the controller
-            P_des = 9.0
-        elif P_des > 13.25:
-            # higher limit of the pressure we are sending into the controller
-            P_des = 13.25
+        for i in range(len(P_des)):
+            # TODO: check the range limits for the pressure being sent for the smaller robot
+            if P_des[i] < 9.0:
+                # lower limit of the pressure we are sending into the controller
+                P_des[i] = 9.0
+            elif P_des[i] > 13.25:
+                # higher limit of the pressure we are sending into the controller
+                P_des[i] = 13.25
 
-        arduino.sendDesiredPressure(arduino.channel0, P_des)
-
+        # send each channel pressure
+        arduino.sendDesiredPressure(arduino.channel0, P_des[0])
+        arduino.sendDesiredPressure(arduino.channel1, P_des[1])
+        arduino.sendDesiredPressure(arduino.channel2, P_des[2])
 
     def handleGUICommand(self, newCmd):
         '''
@@ -459,6 +496,7 @@ def main():
     # Kill controller once GUI is exited
     cThread.raise_exception()
     cThread.join()
+
 
 if __name__ == "__main__":
     main()
