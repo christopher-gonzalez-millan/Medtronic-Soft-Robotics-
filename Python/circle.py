@@ -12,23 +12,23 @@ arduino = arduino_control.arduino()
 arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
 
 startTime = time.time()
-sleep = 4
+sleep = 0.25
 
 #c0
 minPSI0 = 14.0
-maxPSI0 = 15.4
-psiRange0 =int( (maxPSI0 - minPSI0) / 0.1)
-psiDelta0 = 0.1
+maxPSI0 = 15.2
+psiDelta0 = 0.05
+psiRange0 =int( (maxPSI0 - minPSI0) / psiDelta0)
 #c1
 minPSI1 = 14.0
-maxPSI1 = 15.4
-psiRange1 =int( (maxPSI1 - minPSI1) / 0.1)
-psiDelta1 = 0.1
+maxPSI1 = 15.1
+psiDelta1 = 0.05
+psiRange1 =int( (maxPSI1 - minPSI1) / psiDelta1)
 #c2
 minPSI2 = 14.0
-maxPSI2 = 15.4
-psiRange2 =int( (maxPSI2 - minPSI2) / 0.1)
-psiDelta2 = 0.1
+maxPSI2 = 15.3
+psiDelta2 = 0.05
+psiRange2 =int( (maxPSI2 - minPSI2) / psiDelta2)
 
 arduino.sendDesiredPressure(arduino.channel0, 12.0)
 arduino.sendDesiredPressure(arduino.channel1, 12.0)
@@ -45,7 +45,7 @@ try:
         psi = minPSI1 + (psiDelta1 * i)
         print('thertotical psi: {}'.format(psi))
         arduino.sendDesiredPressure(arduino.channel1, psi)
-        time.sleep(1)
+        time.sleep(sleep)
         print('actual psi: {}'.format(arduino.getActualPressure(arduino.channel1)))
     
     #decrease first channel
@@ -62,7 +62,7 @@ try:
     #increase third channel
     print("")
     print("channel 2 increase")
-    for i in range(psiRange2):
+    for i in range(psiRange2 + 1):
         psi = minPSI2 + (psiDelta2 * i)
         print('thertotical psi: {}'.format(psi))
         arduino.sendDesiredPressure(arduino.channel2, psi)  
@@ -73,7 +73,7 @@ try:
     #decrease second channel
     print("")
     print("channel 1 decrease")
-    for i in range(psiRange1):
+    for i in range(psiRange1 + 1):
         psi = maxPSI1 - (psiDelta1 * i)
         print('thertotical psi: {}'.format(psi))
         arduino.sendDesiredPressure(arduino.channel1, psi)
@@ -85,7 +85,7 @@ try:
     #increase first channel
     print("")
     print("channel 0 increase")
-    for i in range(psiRange0):
+    for i in range(psiRange0 + 1):
         psi = minPSI0 + (psiDelta0 * i)
         print('thertotical psi: {}'.format(psi))
         arduino.sendDesiredPressure(arduino.channel0, psi) 
@@ -95,7 +95,7 @@ try:
     #decrease third channel
     print("")
     print("channel 2 decrease")
-    for i in range(psiRange2):
+    for i in range(psiRange2 + 1):
         psi = maxPSI2 - (psiDelta2 * i)
         print('thertotical psi: {}'.format(psi))
         arduino.sendDesiredPressure(arduino.channel2, psi)
