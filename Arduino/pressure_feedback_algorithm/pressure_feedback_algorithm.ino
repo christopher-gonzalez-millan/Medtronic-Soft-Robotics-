@@ -28,20 +28,24 @@
  * in order to cause a state transition from HOLD to DEFLATE or INFLATE
  *
  */
-#define PRESSURE_TOLERANCE 0.15
+#define PRESSURE_TOLERANCE 0.03
 #define PRESSURE_HOLD_TOLERANCE 0.15
 
-// I/O related defines
+// Solenoid Valves
 #define SOLENOID_CLOSED LOW
 #define SOLENOID_OPEN HIGH
+// Because we are digitally manipulating these valves to simulate PWM,
+// We define a cycle time and a duty cycle.
+#define SOLENOID_CYCLE_TIME_MS 5000
+#define POSITIVE_SOLENOID_DUTY_CYCLE .55
+#define NEGATIVE_SOLENOID_DUTY_CYCLE .35
+
 /*
- * Dictates duty cycle for all positive and negative pumps, in all cases!
- * This is the lowest operable analog value for our pumps.
- * 110/255 * 5V = 2.15V Sent to pump
+ * Various pump PWM values. Due to hardware variability,
+ * we run some pumps higher than others.
  */
-#define PUMP_PWM_POS 150
-#define PUMP_PWM_NEG 150
-// TODO FIXME!! 110 for channel2, 95 for channel0
+#define PUMP_PWM 130
+#define PUMP_PWM_INCREASED 150
 #define PUMP_OFF 0
 
 // Serial related defines
@@ -80,13 +84,14 @@ struct channelData
     int negativePump;
     int positiveSolenoid;
     int negativeSolenoid;
+    int pumpPWM;            // PWM value for both pumps on the channel
 };
 
 channelData channels[NUM_CHANNELS] =
 {
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 12, 11, 52, 53},  // Channel 0
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10,  9, 50, 51},  // Channel 1
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 8,   7, 48, 49}, // Channel 2
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 12, 11, 52, 53, PUMP_PWM},  // Channel 0
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10,  9, 50, 51, PUMP_PWM},  // Channel 1
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 8,   7, 48, 49, PUMP_PWM_INCREASED}, // Channel 2
 };
 
 /*
@@ -110,6 +115,13 @@ void setup() {
 
     // Send confirmation on serial line
     Serial.println("Arduino Setup Complete");
+
+    // Initialize all channels to default pressure in case any data is
+    // persisting between differnet uploads
+    for (int8_t cNum = 0; cNum < NUM_CHANNELS; cNum++)
+    {
+        channels[cNum].desiredPressure = DEFAULT_PRESSURE;
+    }
 }
 
 /*
@@ -178,15 +190,15 @@ void loop() {
             {
                 case INFLATE:
                     // Pumps
-                    analogWrite(channels[cNum].positivePump, PUMP_PWM_POS);
+                    analogWrite(channels[cNum].positivePump, channels[cNum].pumpPWM);
                     analogWrite(channels[cNum].negativePump, PUMP_OFF);
                     digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
 
-                    //
+                    // Simulate PWM on the solenoid valves by digitally manipulating them.
                     digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_OPEN);
-                    // delayMicroseconds(.45*5000);
-                    // digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
-                    // delayMicroseconds(.55*5000);
+                    delayMicroseconds(POSITIVE_SOLENOID_DUTY_CYCLE*SOLENOID_CYCLE_TIME_MS);
+                    digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
+                    delayMicroseconds((1-POSITIVE_SOLENOID_DUTY_CYCLE)*SOLENOID_CYCLE_TIME_MS);
                     
                     break; 
                     
@@ -204,14 +216,13 @@ void loop() {
                     // Solenoids
                     digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
                     analogWrite(channels[cNum].positivePump, PUMP_OFF);
-                    analogWrite(channels[cNum].negativePump, PUMP_PWM_NEG); 
+                    analogWrite(channels[cNum].negativePump, channels[cNum].pumpPWM); 
 
-                    // 
+                    // Simulate PWM on the solenoid valves by digitally manipulating them.
                     digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_OPEN);
-                    // delayMicroseconds(.35*5000);
-                    // digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
-                    // delayMicroseconds(.65*5000);
-
+                    delayMicroseconds(NEGATIVE_SOLENOID_DUTY_CYCLE*SOLENOID_CYCLE_TIME_MS);
+                    digitalWrite(channels[cNum].negativeSolenoid, SOLENOID_CLOSED);
+                    delayMicroseconds((1-NEGATIVE_SOLENOID_DUTY_CYCLE)*SOLENOID_CYCLE_TIME_MS);
                     break;
             }
         } 
