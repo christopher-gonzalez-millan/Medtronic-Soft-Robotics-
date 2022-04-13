@@ -3,7 +3,7 @@
  * @author  CU Boulder Medtronic Team 7
  * @brief   Basic 1D proportional controller
 '''
-# from NDI_Code.NDISensor import NDISensor
+from NDI_Code.NDISensor import NDISensor
 from Py_Arduino_Communication.arduino_control import arduino_control
 import threading
 from queue import Queue
