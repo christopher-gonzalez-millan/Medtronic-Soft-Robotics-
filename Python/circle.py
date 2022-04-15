@@ -12,21 +12,21 @@ arduino = arduino_control.arduino()
 arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
 
 startTime = time.time()
-sleep = 0.25
+sleep = 0.15
 
 #c0
-minPSI0 = 14.0
-maxPSI0 = 15.2
+minPSI0 = 13.0 # 14.0
+maxPSI0 = 15.1 # 15.2
 psiDelta0 = 0.05
 psiRange0 =int( (maxPSI0 - minPSI0) / psiDelta0)
 #c1
-minPSI1 = 14.0
-maxPSI1 = 15.1
+minPSI1 = 13.0 # 14.0
+maxPSI1 = 15.4 # 15.1
 psiDelta1 = 0.05
 psiRange1 =int( (maxPSI1 - minPSI1) / psiDelta1)
 #c2
-minPSI2 = 14.0
-maxPSI2 = 15.3
+minPSI2 = 13.0 # 14.0
+maxPSI2 = 15.4 # 15.3
 psiDelta2 = 0.05
 psiRange2 =int( (maxPSI2 - minPSI2) / psiDelta2)
 
