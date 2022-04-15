@@ -38,6 +38,7 @@
 // We define a cycle time and a duty cycle.
 #define SOLENOID_CYCLE_TIME_MS 5000
 #define POSITIVE_SOLENOID_DUTY_CYCLE .55
+#define POSITIVE_SOLENOID_DUTY_CYCLE_INCREASED .65
 #define NEGATIVE_SOLENOID_DUTY_CYCLE .35
 
 /*
@@ -45,7 +46,7 @@
  * we run some pumps higher than others.
  */
 #define PUMP_PWM 130
-#define PUMP_PWM_INCREASED 150
+#define PUMP_PWM_INCREASED 130
 #define PUMP_OFF 0
 
 // Serial related defines
@@ -85,13 +86,14 @@ struct channelData
     int positiveSolenoid;
     int negativeSolenoid;
     int pumpPWM;            // PWM value for both pumps on the channel
+    float positiveSolenoidDutyCycle;
 };
 
 channelData channels[NUM_CHANNELS] =
 {
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 12, 11, 52, 53, PUMP_PWM},  // Channel 0
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10,  9, 50, 51, PUMP_PWM},  // Channel 1
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 8,   7, 48, 49, PUMP_PWM_INCREASED}, // Channel 2
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 12, 11, 52, 53, PUMP_PWM, POSITIVE_SOLENOID_DUTY_CYCLE},  // Channel 0
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10,  9, 50, 51, PUMP_PWM, POSITIVE_SOLENOID_DUTY_CYCLE_INCREASED},  // Channel 1
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 8,   7, 48, 49, PUMP_PWM_INCREASED, POSITIVE_SOLENOID_DUTY_CYCLE_INCREASED}, // Channel 2
 };
 
 /*
@@ -196,9 +198,9 @@ void loop() {
 
                     // Simulate PWM on the solenoid valves by digitally manipulating them.
                     digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_OPEN);
-                    delayMicroseconds(POSITIVE_SOLENOID_DUTY_CYCLE*SOLENOID_CYCLE_TIME_MS);
+                    delayMicroseconds(channels[cNum].positiveSolenoidDutyCycle*SOLENOID_CYCLE_TIME_MS);
                     digitalWrite(channels[cNum].positiveSolenoid, SOLENOID_CLOSED);
-                    delayMicroseconds((1-POSITIVE_SOLENOID_DUTY_CYCLE)*SOLENOID_CYCLE_TIME_MS);
+                    delayMicroseconds((1-channels[cNum].positiveSolenoidDutyCycle)*SOLENOID_CYCLE_TIME_MS);
                     
                     break; 
                     

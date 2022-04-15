@@ -241,7 +241,7 @@ class controllerThread(threading.Thread):
         if (newCmd.id == "Arduino"):
             if (newCmd.field1 == "setPressure"):
                 P_des[newCmd.field2] = newCmd.field3
-                print("Setting channel " + str(newCmd.field2) + " to " + str(newCmd.field3))
+                # print("Setting channel " + str(newCmd.field2) + " to " + str(newCmd.field3))
 
 
     def get_id(self):

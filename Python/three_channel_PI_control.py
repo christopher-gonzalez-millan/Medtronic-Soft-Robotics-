@@ -30,7 +30,7 @@ csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
 # Init EM Nav and Arduino
 ndi = NDISensor.NDISensor()
 arduino = arduino_control.arduino()
-arduino.selectChannels(arduino.ON, arduino.OFF, arduino.OFF)
+arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
 
 # Parameters for controller
 z_des = 40.0     # stores the desired z position input by user
@@ -44,7 +44,8 @@ P_act = np.array([0.0, 0.0, 0.0])           # actual pressure read from the pres
 r_des = np.array([0.0, 0.0])                # desired position of robot in form (x, y)
 r_act = np.array([0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
 k_p = np.array([.012, .012, .012])          # proportional controller gain for c0, c1, c2
-k_i = np.array([.012, .012, .012])          # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+k_i = np.array([0, 0, 0])             # temporarily zero
+# k_i = np.array([0, .012, .012])          # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
 dT = np.array([0.125, 0.125, 0.125])        # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)
 int_sum = np.array([0.0, 0.0, 0.0])         # sum of the integral term # TODO: figure out if this should be a global value
 err_r = np.array([0.0, 0.0])                # error between measured position and actual position
@@ -61,7 +62,6 @@ class command:
         self.field1 = field1
         self.field2 = field2
 
-
 class GUI:
     '''
     Class for building GUI
@@ -72,65 +72,62 @@ class GUI:
         master.geometry("400x350")
         master['bg'] = '#474747'
 
-        # tkinter.Frame.__init__(self, master)
-        self.master.bind('<Left>', self.left_key)
-        self.master.bind('<Right>', self.right_key)
-
         # <=== ROW 0 ===>
         command_label = ttk.Label(master, text = "Send Commands")
         command_label.grid(row = 0, column = 0, sticky = W, pady = 2, padx = (2,0))
 
         # <=== ROW 1 ===>
         # Text label for position entry
-        position_label = ttk.Label(master, text = "Enter desired Z [mm]:")
-        position_label.grid(row = 1, column = 0, sticky = W, pady = 2, padx = (30,0))
+        x_position_label = ttk.Label(master, text = "Enter desired X [mm]:")
+        x_position_label.grid(row = 1, column = 0, sticky = W, pady = 2, padx = (30,0))
         # Entry widget for position
-        self.position_entry= ttk.Entry(master, width= 10)
-        self.position_entry.grid(row = 1, column = 1, sticky = W, pady = 2)
-        self.position_entry.bind("<Return>", self.GUI_handleSetPositionCommand)
+        self.x_position_entry= ttk.Entry(master, width= 10)
+        self.x_position_entry.grid(row = 1, column = 1, sticky = W, pady = 2)
+        self.x_position_entry.bind("<Return>", self.GUI_handleSetXPositionCommand)
+
+        y_position_label = ttk.Label(master, text = "Enter desired Y [mm]:")
+        y_position_label.grid(row = 2, column = 0, sticky = W, pady = 2, padx = (30,0))
+        # Entry widget for positionx_position_label
+        self.y_position_entry= ttk.Entry(master, width= 10)
+        self.y_position_entry.grid(row = 2, column = 1, sticky = W, pady = 2)
+        self.y_position_entry.bind("<Return>", self.GUI_handleSetYPositionCommand)
 
         # <=== ROW 2 ===>
         # Text label for proportional gain entry
         kp_label = ttk.Label(master, text = "Enter kp:")
-        kp_label.grid(row = 2, column = 0, sticky = W, pady = 2, padx = (30,0))
+        kp_label.grid(row = 3, column = 0, sticky = W, pady = 2, padx = (30,0))
         #Create an Entry widget to accept User Input
         self.kp_entry = ttk.Entry(master, width= 10)
-        self.kp_entry.grid(row = 2, column = 1, sticky = W, pady = 2)
+        self.kp_entry.grid(row = 3, column = 1, sticky = W, pady = 2)
         self.kp_entry.bind("<Return>", self.GUI_handleSetKpCommand)
 
         # <=== ROW 3 ===>
         # Text label for integral gain entry
         ki_label = ttk.Label(master, text = "Enter ki:")
-        ki_label.grid(row = 3, column = 0, sticky = W, pady = 2, padx = (30,0))
+        ki_label.grid(row = 4, column = 0, sticky = W, pady = 2, padx = (30,0))
         #Create an Entry widget to accept User Input
         self.ki_entry = ttk.Entry(master, width= 10)
-        self.ki_entry.grid(row = 3, column = 1, sticky = W, pady = 2)
+        self.ki_entry.grid(row = 4, column = 1, sticky = W, pady = 2)
         self.ki_entry.bind("<Return>", self.GUI_handleSetKiCommand)
-
-        self.master.bind("<Left>", self.left_key)
-        self.master.bind("<Right>", self.right_key)
 
         # Diplaying data
         display_label = ttk.Label(master, text = "Press/hold enter to display")
-        display_label.grid(row = 4, column = 0, sticky = W, pady = (20,2), padx = (2,0))
+        display_label.grid(row = 5, column = 0, sticky = W, pady = (20,2), padx = (2,0))
         self.display_entry = ttk.Entry(master, width= 1)
-        self.display_entry.grid(row = 4, column = 1, sticky = W, pady = (20,2))
+        self.display_entry.grid(row = 5, column = 1, sticky = W, pady = (20,2))
         self.display_entry.bind("<Return>", self.GUI_handleDataDisplay)
 
-        self.z_des_label = ttk.Label(master, text = "Z desired: ")
-        self.z_des_label.grid(row = 5, column = 0, sticky = W, pady = 2, padx = (30,0))
+        self.x_des_label = ttk.Label(master, text = "X desired: ")
+        self.x_des_label.grid(row = 6, column = 0, sticky = W, pady = 2, padx = (30,0))
 
-        self.z_act_label = ttk.Label(master, text = "Z actual: ")
-        self.z_act_label.grid(row = 6, column = 0, sticky = W, pady = 2, padx = (30,0))
+        self.x_act_label = ttk.Label(master, text = "X actual: ")
+        self.x_act_label.grid(row = 7, column = 0, sticky = W, pady = 2, padx = (30,0))
 
-        self.p_des_label = ttk.Label(master, text = "P desired: ")
-        self.p_des_label.grid(row = 7, column = 0, sticky = W, pady = 2, padx = (30,0))
+        self.y_des_label = ttk.Label(master, text = "Z desired: ")
+        self.y_des_label.grid(row = 8, column = 0, sticky = W, pady = 2, padx = (30,0))
 
-        self.p_act_label = ttk.Label(master, text = "P actual: ")
-        self.p_act_label.grid(row = 8, column = 0, sticky = W, pady = 2, padx = (30,0))
-
-        self.int_sum_label = ttk.Label(master, text = "int_sum : ")
-        self.int_sum_label.grid(row = 9, column = 0, sticky = W, pady = 2, padx = (30,0))
+        self.y_act_label = ttk.Label(master, text = "Z actual: ")
+        self.y_act_label.grid(row = 9, column = 0, sticky = W, pady = 2, padx = (30,0))
 
         # Record data
         command_label = ttk.Label(master, text = "Data Recording")
@@ -145,20 +142,18 @@ class GUI:
         clear_log_button = ttk.Button(master, text = "Clear Log File", width = 12, command = lambda: self.GUI_handleLoggingCommand("clear"))
         clear_log_button.grid(row = 11, column = 2, sticky = W, pady = 2, padx = (50,0))
 
-
-    def left_key(self, *args):
-        newCmd = command("EM_Sensor", "adjustPosition", .5)
-        commandsFromGUI.put(newCmd)
-
-    def right_key(self, *args):
-        newCmd = command("EM_Sensor", "adjustPosition", -.5)
-        commandsFromGUI.put(newCmd)
-
-    def GUI_handleSetPositionCommand(self, *args):
+    def GUI_handleSetXPositionCommand(self, *args):
         '''
         Handle setting the position from the GUI
         '''
-        newCmd = command("EM_Sensor", "setPosition", float(self.position_entry.get()))
+        newCmd = command("EM_Sensor", "setXPosition", float(self.x_position_entry.get()))
+        commandsFromGUI.put(newCmd)
+
+    def GUI_handleSetYPositionCommand(self, *args):
+        '''
+        Handle setting the position from the GUI
+        '''
+        newCmd = command("EM_Sensor", "setYPosition", float(self.y_position_entry.get()))
         commandsFromGUI.put(newCmd)
 
     def GUI_handleSetKpCommand(self, *args):
@@ -179,13 +174,13 @@ class GUI:
         '''
         Display control algorithm parameters to the GUI
         '''
-        global z_des, z_act, P_des, P_act
+        global r_des, r_act, y_des, y_act, int_sum
 
-        self.z_des_label.configure(text = "Z desired: " + str(round(z_des,3)))
-        self.z_act_label.configure(text = "Z actual: " + str(round(z_act,3)))
-        self.p_des_label.configure(text = "P desired: " + str(round(P_des,3)))
-        self.p_act_label.configure(text = "P actual: " + str(round(P_act,3)))
-        self.int_sum_label.configure(text = "int_sum: " + str(round(int_sum,3)))
+        self.x_des_label.configure(text = "X desired: " + str(round(r_des[0],3)))
+        self.x_act_label.configure(text = "X actual: " + str(round(r_act[0],3)))
+        self.y_des_label.configure(text = "Z desired: " + str(round(r_des[1],3)))
+        self.y_act_label.configure(text = "Z actual: " + str(round(r_act[1],3)))
+        # self.int_sum_label.configure(text = "int_sum: " + str(round(int_sum,3)))
 
     def GUI_handleLoggingCommand(self, status):
         '''
@@ -222,7 +217,7 @@ class controllerThread(threading.Thread):
                     self.handleGUICommand(newCmd)
 
                 # self.one_D_main()
-                self.three_channel_algorithm()
+                self.three_channel_main()
                 time.sleep(.07)
 
         finally:
@@ -334,11 +329,13 @@ class controllerThread(threading.Thread):
         P_act[0] = arduino.getActualPressure(arduino.channel0)
         P_act[1] = arduino.getActualPressure(arduino.channel1)
         P_act[2] = arduino.getActualPressure(arduino.channel2)
+        print("P_act", P_act)
 
         # get actual position from EM sensor
         position = ndi.getPositionInRange()
         r_act[0] = position.deltaX          # x dim
-        r_act[1] = position.deltaY          # y dim
+        r_act[1] = position.deltaZ          # y dim
+        # print("r_act[0]: " + str(r_act[0]) + "r_act[1]: " + str(r_act[1]))
 
         # perform 3 channel control algorithm
         self.three_channel_algorithm()
@@ -348,15 +345,15 @@ class controllerThread(threading.Thread):
 
         # Log all control variables if needed / TODO: find out how to re-implement time_diff variable
         # TODO: figure out if logging works with vectors/matrices
-        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
-        if logging.getLogger().getEffectiveLevel() == logging.INFO:
-            csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
+        # logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
+        # if logging.getLogger().getEffectiveLevel() == logging.INFO:
+        #     csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
 
     def three_channel_algorithm(self):
         '''
         Proportional/PI feedback loop algorithm (vector based solution -- includes dot product and bounded least squares solution)
         '''
-        global r_des, r_act, err_r, P_des, P_act, k_p, k_i, dT, int_sum, epsi_prev, start_time
+        global r_des, r_act, err_r, P_des, P_act, k_p, k_i, dT, int_sum, epsi, epsi_prev, start_time
 
         # if start_time > 0:
         #     # self.ramp_signal()
@@ -379,6 +376,8 @@ class controllerThread(threading.Thread):
         # < ------- Feedback controller --------- >
         del_P_des = k_p*epsi + k_i*(int_sum)                    # should be element-wise operations / TODO: check the matrix math here
         P_des = P_act + del_P_des
+        print("P_des: ", P_des)
+        print("del_P_des: ", del_P_des)
 
         # Check for windup of the integrator
         # if (P_des >= 13.25) or (P_des <= 9.0):
@@ -397,14 +396,15 @@ class controllerThread(threading.Thread):
         # array that contains C1, C2, C3 unit vectors
         A = np.array([[sqrt(3)/2, -sqrt(3)/2, 0], [1/2, 1/2, -1]])
 
-        # perform unbounded least squares
-        sol = sp_opt.lsq_linear(A, err_r)
+        # # perform unbounded least squares
+        # sol = sp_opt.lsq_linear(A, err_r)
 
-        # return the solution to the optimization (m, n, p)
-        epsi = sol.x
+        # # return the solution to the optimization (m, n, p)
+        # epsi = sol.x
+        # print("epsi: ", epsi)
 
-        # <----- Dot product method ----->
-        # develop channel unit vectors
+        # # <----- Dot product method ----->
+        # # develop channel unit vectors
         C0 = A[:, 0]
         C1 = A[:, 1]
         C2 = A[:, 2]
@@ -413,6 +413,7 @@ class controllerThread(threading.Thread):
         epsi[0] = np.dot(err_r, C0)
         epsi[1] = np.dot(err_r, C1)
         epsi[2] = np.dot(err_r, C2)
+        print("epsi: ", epsi)
 
     def sendDesiredPressure(self):
         '''
@@ -424,30 +425,32 @@ class controllerThread(threading.Thread):
             if P_des[i] < 9.0:
                 # lower limit of the pressure we are sending into the controller
                 P_des[i] = 9.0
-            elif P_des[i] > 13.25:
+            elif P_des[i] > 15.5:
                 # higher limit of the pressure we are sending into the controller
-                P_des[i] = 13.25
+                P_des[i] = 15.5
 
         # send each channel pressure
-        arduino.sendDesiredPressure(arduino.channel0, P_des[0])
-        arduino.sendDesiredPressure(arduino.channel1, P_des[1])
-        arduino.sendDesiredPressure(arduino.channel2, P_des[2])
+        arduino.sendDesiredPressure(arduino.channel0, float(P_des[0]))
+        arduino.sendDesiredPressure(arduino.channel1, float(P_des[1]))
+        arduino.sendDesiredPressure(arduino.channel2, float(P_des[2]))
 
     def handleGUICommand(self, newCmd):
         '''
         Function to handle commands from the GUI.
         Takes place on controller thread
         '''
-        global z_des, k_p, k_i
+        global r_des, k_p, k_i
 
         if (newCmd.id == "EM_Sensor"):
-            if (newCmd.field1 == "adjustPosition"):
-                z_des += newCmd.field2
-            elif (newCmd.field1 == "setPosition"):
-                z_des = newCmd.field2
+            if (newCmd.field1 == "setXPosition"):
+                r_des[0] = newCmd.field2
+            elif (newCmd.field1 == "setYPosition"):
+                r_des[1] = newCmd.field2
                 logging.debug("\nCommand recieved to set position to ", z_des)
             elif (newCmd.field1 == "setKp"):
-                k_p = newCmd.field2
+                k_p[0] = newCmd.field2
+                k_p[1] = newCmd.field2
+                k_p[2] = newCmd.field2
                 logging.debug("\nCommand recieved to set proportional gain to", k_p)
             elif (newCmd.field1 == "setKi"):
                 k_i = newCmd.field2
@@ -463,7 +466,6 @@ class controllerThread(threading.Thread):
         for id, thread in threading._active.items():
             if thread is self:
                 return id
-
 
     def raise_exception(self):
         '''
@@ -496,7 +498,6 @@ def main():
     # Kill controller once GUI is exited
     cThread.raise_exception()
     cThread.join()
-
 
 if __name__ == "__main__":
     main()

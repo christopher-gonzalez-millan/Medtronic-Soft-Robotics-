@@ -253,10 +253,8 @@ class NDISensor:
         if (reply[105] == "-"):
             Ty2 *= -1
 
-        Tz2 = float(reply[112:116] + "." + reply[116:118])
-        if (reply[111] == "-"):
+        Tz2 = float(reply[113:117] + "." + reply[117:119])
+        if (reply[112] == "-"):
             Tz2 *= -1
-
-        # print("\tTx: " + str(Tx) + "\tTy: " + str(Ty) + "\tTz:" + str(Tz))
 
         return parsedReply((Tx1 - Tx2), (Ty1 - Ty2), (Tz1 - Tz2))
