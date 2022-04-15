@@ -43,7 +43,7 @@ P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to 
 P_act = np.array([0.0, 0.0, 0.0])           # actual pressure read from the pressure sensor (c0, c1, c2)
 r_des = np.array([0.0, 0.0])                # desired position of robot in form (x, y)
 r_act = np.array([0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
-k_p = np.array([.012, .012, .012])          # proportional controller gain for c0, c1, c2
+k_p = np.array([.05, .05, .05])          # proportional controller gain for c0, c1, c2
 k_i = np.array([0, 0, 0])             # temporarily zero
 # k_i = np.array([0, .012, .012])          # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
 dT = np.array([0.125, 0.125, 0.125])        # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)
@@ -176,10 +176,10 @@ class GUI:
         '''
         global r_des, r_act, y_des, y_act, int_sum
 
-        self.x_des_label.configure(text = "X desired: " + str(round(r_des[0],3)))
-        self.x_act_label.configure(text = "X actual: " + str(round(r_act[0],3)))
-        self.y_des_label.configure(text = "Z desired: " + str(round(r_des[1],3)))
-        self.y_act_label.configure(text = "Z actual: " + str(round(r_act[1],3)))
+        self.x_des_label.configure(text = "X desired: " + str(round(r_des[1],3)))
+        self.x_act_label.configure(text = "X actual: " + str(round(r_act[1],3)))
+        self.y_des_label.configure(text = "Z desired: " + str(round(r_des[0],3)))
+        self.y_act_label.configure(text = "Z actual: " + str(round(r_act[0],3)))
         # self.int_sum_label.configure(text = "int_sum: " + str(round(int_sum,3)))
 
     def GUI_handleLoggingCommand(self, status):
@@ -329,12 +329,12 @@ class controllerThread(threading.Thread):
         P_act[0] = arduino.getActualPressure(arduino.channel0)
         P_act[1] = arduino.getActualPressure(arduino.channel1)
         P_act[2] = arduino.getActualPressure(arduino.channel2)
-        print("P_act", P_act)
+        # print("P_act", P_act)
 
         # get actual position from EM sensor
         position = ndi.getPositionInRange()
-        r_act[0] = position.deltaX          # x dim
-        r_act[1] = position.deltaZ          # y dim
+        r_act[1] = position.deltaX          # x dim
+        r_act[0] = position.deltaZ          # y dim
         # print("r_act[0]: " + str(r_act[0]) + "r_act[1]: " + str(r_act[1]))
 
         # perform 3 channel control algorithm
@@ -361,6 +361,7 @@ class controllerThread(threading.Thread):
 
         # Calculate the error between current and desired positions
         err_r = r_des - r_act
+        # print("err_r: ", err_r)
 
         # perform force vector calculations
         self.forceVectorCalc()
@@ -376,8 +377,10 @@ class controllerThread(threading.Thread):
         # < ------- Feedback controller --------- >
         del_P_des = k_p*epsi + k_i*(int_sum)                    # should be element-wise operations / TODO: check the matrix math here
         P_des = P_act + del_P_des
-        print("P_des: ", P_des)
-        print("del_P_des: ", del_P_des)
+
+        # print("del_P_des: ", del_P_des)
+        # print("P_act: ", P_act)
+        # print("P_des: ", P_des)
 
         # Check for windup of the integrator
         # if (P_des >= 13.25) or (P_des <= 9.0):
@@ -397,23 +400,23 @@ class controllerThread(threading.Thread):
         A = np.array([[sqrt(3)/2, -sqrt(3)/2, 0], [1/2, 1/2, -1]])
 
         # # perform unbounded least squares
-        # sol = sp_opt.lsq_linear(A, err_r)
+        sol = sp_opt.lsq_linear(A, err_r)
 
-        # # return the solution to the optimization (m, n, p)
-        # epsi = sol.x
+        # return the solution to the optimization (m, n, p)
+        epsi = sol.x
         # print("epsi: ", epsi)
 
         # # <----- Dot product method ----->
         # # develop channel unit vectors
-        C0 = A[:, 0]
-        C1 = A[:, 1]
-        C2 = A[:, 2]
+        # C0 = A[:, 0]
+        # C1 = A[:, 1]
+        # C2 = A[:, 2]
 
-        # dot product of error vector along the channel vectors
-        epsi[0] = np.dot(err_r, C0)
-        epsi[1] = np.dot(err_r, C1)
-        epsi[2] = np.dot(err_r, C2)
-        print("epsi: ", epsi)
+        # # dot product of error vector along the channel vectors
+        # epsi[0] = np.dot(err_r, C0)
+        # epsi[1] = np.dot(err_r, C1)
+        # epsi[2] = np.dot(err_r, C2)
+        # print("epsi: ", epsi)
 
     def sendDesiredPressure(self):
         '''
@@ -423,11 +426,13 @@ class controllerThread(threading.Thread):
         for i in range(len(P_des)):
             # TODO: check the range limits for the pressure being sent for the smaller robot
             if P_des[i] < 9.0:
+                print("CAPPIN")
                 # lower limit of the pressure we are sending into the controller
                 P_des[i] = 9.0
-            elif P_des[i] > 15.5:
+            elif P_des[i] > 15.3:
+                print("CAPPIN")
                 # higher limit of the pressure we are sending into the controller
-                P_des[i] = 15.5
+                P_des[i] = 15.3
 
         # send each channel pressure
         arduino.sendDesiredPressure(arduino.channel0, float(P_des[0]))
@@ -443,9 +448,9 @@ class controllerThread(threading.Thread):
 
         if (newCmd.id == "EM_Sensor"):
             if (newCmd.field1 == "setXPosition"):
-                r_des[0] = newCmd.field2
-            elif (newCmd.field1 == "setYPosition"):
                 r_des[1] = newCmd.field2
+            elif (newCmd.field1 == "setYPosition"):
+                r_des[0] = newCmd.field2
                 logging.debug("\nCommand recieved to set position to ", z_des)
             elif (newCmd.field1 == "setKp"):
                 k_p[0] = newCmd.field2
