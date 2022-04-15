@@ -264,10 +264,11 @@ class controllerThread(threading.Thread):
         radius = 15                             # radius of the circle in mm
 
         T = 30                                  # period of the circle (in seconds)
+        center = np.array([5.0, 5.0])           # center of the circle script (z, x)       
 
         # parametric equations that represent circcle as a function of time
-        r_des[0] = radius*cos((2*pi/T)*time_diff)        # in z
-        r_des[1] = radius*sin((2*pi/T)*time_diff)        # in x
+        r_des[0] = center[0] + radius*cos((2*pi/T)*time_diff)        # in z
+        r_des[1] = center[1] + radius*sin((2*pi/T)*time_diff)        # in x
 
     def one_D_main(self):
         '''
