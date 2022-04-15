@@ -263,9 +263,11 @@ class controllerThread(threading.Thread):
         
         radius = 15                             # radius of the circle in mm
 
+        T = 30                                  # period of the circle (in seconds)
+
         # parametric equations that represent circcle as a function of time
-        r_des[0] = radius*cos(time_diff)        # in z
-        r_des[1] = radius*sin(time_diff)        # in x
+        r_des[0] = radius*cos((2*pi/T)*time_diff)        # in z
+        r_des[1] = radius*sin((2*pi/T)*time_diff)        # in x
 
     def one_D_main(self):
         '''
