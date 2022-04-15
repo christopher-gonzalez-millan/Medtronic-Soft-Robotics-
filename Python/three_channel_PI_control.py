@@ -3,6 +3,7 @@
  * @author  CU Boulder Medtronic Team 7
  * @brief   Basic 3D proportional and/or PI controller
 '''
+from cmath import cos
 from NDI_Code.NDISensor import NDISensor
 from Py_Arduino_Communication.arduino_control import arduino_control
 import threading
@@ -37,6 +38,7 @@ z_des = 40.0     # stores the desired z position input by user
 z_act = 0.0     # actual z_position from EM sensor
 start_time = 0      # start time for the ramp and sinusoid signals
 time_diff = 0       # time difference betweeen the start and current times
+temp_start_time = time.time()
 
 # Parameters for the 3 channel controller
 P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to the Arduino (c0, c1, c2)
@@ -250,7 +252,20 @@ class controllerThread(threading.Thread):
         C = (80 - 50)/2 + 50                    # shifts the signal up to range of 50 mm to 90 mm
         T = 30                                # period of the signal in seconds
 
-        z_des = A*sg.sawtooth((2*pi/T)*time_diff, width = 0.5) + C       # ramp signal set as a triangle wave           
+        z_des = A*sg.sawtooth((2*pi/T)*time_diff, width = 0.5) + C       # ramp signal set as a triangle wave 
+
+    def circle_signal(self):
+        global start_time, r_des, time_diff, temp_start_time
+
+        current_time = time.time()              # current time compared to start time    
+
+        time_diff = current_time - temp_start_time   # time difference used in the signal / TODO: incorporate the data logger into this function
+        
+        radius = 15                             # radius of the circle in mm
+
+        # parametric equations that represent circcle as a function of time
+        r_des[0] = radius*cos(time_diff)        # in z
+        r_des[1] = radius*sin(time_diff)        # in x
 
     def one_D_main(self):
         '''
@@ -355,9 +370,8 @@ class controllerThread(threading.Thread):
         '''
         global r_des, r_act, err_r, P_des, P_act, k_p, k_i, dT, int_sum, epsi, epsi_prev, start_time
 
-        # if start_time > 0:
-        #     # self.ramp_signal()
-        #     self.sinusoid_signal()
+        if start_time > 0:
+            self.circle_signal()
 
         # Calculate the error between current and desired positions
         err_r = r_des - r_act
