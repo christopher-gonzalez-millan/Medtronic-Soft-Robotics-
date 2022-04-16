@@ -39,7 +39,6 @@ z_des = 40.0     # stores the desired z position input by user
 z_act = 0.0     # actual z_position from EM sensor
 start_time = 0      # start time for the ramp and sinusoid signals
 time_diff = 0       # time difference betweeen the start and current times
-temp_start_time = time.time()
 
 # Parameters for the 3 channel controller
 P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to the Arduino (c0, c1, c2)
@@ -48,14 +47,14 @@ r_des = np.array([0.0, 0.0])                # desired position of robot in form 
 r_act = np.array([0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
 k_p = np.array([.05, .05, .05])             # 2X Scale - proportional controller gain for c0, c1, c2
 # k_p = np.array([.02, .02, .02])             # 1X Scale - proportional controller gain for c0, c1, c2
-k_i = np.array([0.05, 0.05, 0.05])          # 2X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+k_i = np.array([0.02, 0.02, 0.02])          # 2X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
 # k_i = np.array([0.01, 0.01, 0.01])          # 1X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
 dT = np.array([0.125, 0.125, 0.125])        # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)
 int_sum = np.array([0.0, 0.0, 0.0])         # sum of the integral term # TODO: figure out if this should be a global value
 err_r = np.array([0.0, 0.0])                # error between measured position and actual position
 epsi = np.array([0.0, 0.0, 0.0])            # stores the solution to the force vector algorithm
 epsi_prev = np.array([0.0, 0.0, 0.0])       # modified error in r (after force vector solution) for the previous time step # TODO: figure out if this should be a global value
-max_pressure = np.array([15.4, 15.4, 15.4])
+max_pressure = np.array([15.7, 15.7, 15.7])
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -259,13 +258,13 @@ class controllerThread(threading.Thread):
         z_des = A*sg.sawtooth((2*pi/T)*time_diff, width = 0.5) + C       # ramp signal set as a triangle wave 
 
     def circle_signal(self):
-        global start_time, r_des, time_diff, temp_start_time
+        global start_time, r_des, time_diff
 
         current_time = time.time()              # current time compared to start time    
 
         time_diff = current_time - start_time   # time difference used in the signal / TODO: incorporate the data logger into this function
         
-        radius = 30                             # radius of the circle in mm
+        radius = 15                             # radius of the circle in mm
 
         T = 60                                  # period of the circle (in seconds)
         center = np.array([0, 0])           # center of the circle script (z, x)       
@@ -380,10 +379,10 @@ class controllerThread(threading.Thread):
         '''
         Proportional/PI feedback loop algorithm (vector based solution -- includes dot product and bounded least squares solution)
         '''
-        global r_des, r_act, err_r, P_des, P_act, k_p, k_i, dT, int_sum, epsi, epsi_prev, start_time, temp_start_time
+        global r_des, r_act, err_r, P_des, P_act, k_p, k_i, dT, int_sum, epsi, epsi_prev, start_time
 
-        # if temp_start_time > 0:
-        #     self.circle_signal()
+        if start_time > 0:
+            self.circle_signal()
 
         # Calculate the error between current and desired positions
         err_r = r_des - r_act
@@ -395,10 +394,10 @@ class controllerThread(threading.Thread):
         # Calculate the integral sum for integral control
         int_sum = int_sum + 0.5*(epsi + epsi_prev)*dT               # these are all element-wise operations / TODO: check the matrix math here
         for i in range(len(int_sum)):                               # checks the integral sum to see if it's in range (hardcoded integral windup)
-            if int_sum[i] > 3:
-                int_sum[i] = 3
-            elif int_sum[i] < -3:
-                int_sum[i] = -3
+            if int_sum[i] > 10:
+                int_sum[i] = 10
+            elif int_sum[i] < -10:
+                int_sum[i] = -10
 
         # < ------- Feedback controller --------- >
         del_P_des = k_p*epsi + k_i*(int_sum)                    # should be element-wise operations / TODO: check the matrix math here
