@@ -46,14 +46,16 @@ P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to 
 P_act = np.array([0.0, 0.0, 0.0])           # actual pressure read from the pressure sensor (c0, c1, c2)
 r_des = np.array([0.0, 0.0])                # desired position of robot in form (x, y)
 r_act = np.array([0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
-k_p = np.array([.05, .05, .05])          # proportional controller gain for c0, c1, c2
-k_i = np.array([0, 0, 0])             # temporarily zero
-# k_i = np.array([0, .012, .012])          # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+# k_p = np.array([.05, .05, .05])             # 2X Scale - proportional controller gain for c0, c1, c2
+k_p = np.array([.02, .02, .02])             # 1X Scale - proportional controller gain for c0, c1, c2
+# k_i = np.array([0.05, 0.05, 0.05])          # 2X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+k_i = np.array([0.01, 0.01, 0.01])          # 1X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
 dT = np.array([0.125, 0.125, 0.125])        # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)
 int_sum = np.array([0.0, 0.0, 0.0])         # sum of the integral term # TODO: figure out if this should be a global value
 err_r = np.array([0.0, 0.0])                # error between measured position and actual position
 epsi = np.array([0.0, 0.0, 0.0])            # stores the solution to the force vector algorithm
 epsi_prev = np.array([0.0, 0.0, 0.0])       # modified error in r (after force vector solution) for the previous time step # TODO: figure out if this should be a global value
+max_pressure = np.array([15.4, 15.1, 15.3])
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -450,10 +452,9 @@ class controllerThread(threading.Thread):
         for i in range(len(P_des)):
             # TODO: check the range limits for the pressure being sent for the smaller robot
             if P_des[i] < 9.0:
-                print("CAPPIN")
                 # lower limit of the pressure we are sending into the controller
                 P_des[i] = 9.0
-            elif P_des[i] > 15.3:
+            elif P_des[i] > max_pressure[i]:
                 print("CAPPIN")
                 # higher limit of the pressure we are sending into the controller
                 P_des[i] = 15.3
