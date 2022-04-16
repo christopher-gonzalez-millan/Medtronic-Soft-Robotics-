@@ -15,7 +15,7 @@ from tkinter import ttk
 from ttkthemes import ThemedStyle
 import logging
 from csv_logger import CsvLogger
-from math import sin, pi, sqrt
+from math import sin, pi, sqrt, cos
 from scipy import signal as sg
 import scipy.optimize as sp_opt
 import numpy as np
@@ -269,9 +269,25 @@ class controllerThread(threading.Thread):
         T = 60                                  # period of the circle (in seconds)
         center = np.array([0, 0])           # center of the circle script (z, x)       
 
-        # parametric equations that represent circcle as a function of time
+        # parametric equations that represent circle as a function of time
         r_des[0] = center[0] + radius*cos((2*pi/T)*time_diff)        # in z
         r_des[1] = center[1] + radius*sin((2*pi/T)*time_diff)        # in x
+
+    def fig_eight_signal(self):
+        global start_time, r_des, time_diff
+
+        current_time = time.time()              # current time compared to start time    
+
+        time_diff = current_time - start_time   # time difference used in the signal / TODO: incorporate the data logger into this function
+        
+        radius = 15                             # "radius" of the figure eight in mm
+
+        T = 60                                  # period of the figure eight (in seconds)
+        center = np.array([0, 0])           # center of the figure eight script (z, x)       
+
+        # parametric equations that represent figure eight as a function of time
+        r_des[0] = center[0] + radius*sin((2*pi/T)*time_diff)                                # in z
+        r_des[1] = center[1] + radius*sin((2*pi/T)*time_diff)*cos((2*pi/T)*time_diff)        # in x
 
     def one_D_main(self):
         '''
