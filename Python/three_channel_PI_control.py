@@ -24,7 +24,7 @@ logging.basicConfig(filename = 'data.log', level = logging.WARNING,
     format = '%(asctime)s,%(message)s')
 
 # create csv logging object to store the data collected
-header = ['date', 'time_diff', 'z_des', 'z_act', 'P_des', 'P_act', 'k_p', 'k_i']
+header = ['date', 'time_diff', 'z_des', 'x_des', 'z_act', 'x_act', 'P_des[0]', 'P_des[1]', 'P_des[2]', 'P_act[0]', 'P_act[1]', 'P_act[2]']
 csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
                         level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
 
@@ -259,7 +259,7 @@ class controllerThread(threading.Thread):
 
         current_time = time.time()              # current time compared to start time    
 
-        time_diff = current_time - temp_start_time   # time difference used in the signal / TODO: incorporate the data logger into this function
+        time_diff = current_time - start_time   # time difference used in the signal / TODO: incorporate the data logger into this function
         
         radius = 15                             # radius of the circle in mm
 
@@ -341,7 +341,7 @@ class controllerThread(threading.Thread):
         '''
         main function used in thread to perform 3 channel algorithm
         '''
-        global P_act, r_act, csv_logger
+        global time_diff, r_des, r_act, P_des, P_act, csv_logger
 
         # get the actual pressure from the pressure sensor
         P_act[0] = arduino.getActualPressure(arduino.channel0)
@@ -363,15 +363,15 @@ class controllerThread(threading.Thread):
 
         # Log all control variables if needed / TODO: find out how to re-implement time_diff variable
         # TODO: figure out if logging works with vectors/matrices
-        # logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
-        # if logging.getLogger().getEffectiveLevel() == logging.INFO:
-        #     csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
+        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, r_des[0], r_des[1], r_act[0], r_act[1], P_des[0], P_des[1], P_des[2], P_act[0], P_act[1], P_act[2]))
+        if logging.getLogger().getEffectiveLevel() == logging.INFO:
+            csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, r_des[0], r_des[1], r_act[0], r_act[1], P_des[0], P_des[1], P_des[2], P_act[0], P_act[1], P_act[2]))
 
     def three_channel_algorithm(self):
         '''
         Proportional/PI feedback loop algorithm (vector based solution -- includes dot product and bounded least squares solution)
         '''
-        global r_des, r_act, err_r, P_des, P_act, k_p, k_i, dT, int_sum, epsi, epsi_prev, start_time
+        global r_des, r_act, err_r, P_des, P_act, k_p, k_i, dT, int_sum, epsi, epsi_prev, start_time, temp_start_time
 
         if start_time > 0:
             self.circle_signal()
