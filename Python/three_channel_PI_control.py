@@ -24,9 +24,10 @@ logging.basicConfig(filename = 'data.log', level = logging.WARNING,
     format = '%(asctime)s,%(message)s')
 
 # create csv logging object to store the data collected
-header = ['date', 'time_diff', 'z_des', 'x_des', 'z_act', 'x_act', 'P_des[0]', 'P_des[1]', 'P_des[2]', 'P_act[0]', 'P_act[1]', 'P_act[2]']
+header = ['date', 'sample_num', 'time_diff', 'z_des', 'x_des', 'z_act', 'x_act', 'P_des[0]', 'P_des[1]', 'P_des[2]', 'P_act[0]', 'P_act[1]', 'P_act[2]']
 csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
                         level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
+sample_num = 0          # variable to keep track of the samples for any data collection
 
 # Init EM Nav and Arduino
 ndi = NDISensor.NDISensor()
@@ -188,11 +189,12 @@ class GUI:
         '''
         Start logging
         '''
-        global start_time
+        global start_time, sample_num
 
         if (status == "start"):
             logging.getLogger().setLevel(logging.INFO)
             start_time = time.time()                    # start time for ramp and sinusoid signals
+            sample_num = 0
         elif (status == "stop"):
             logging.getLogger().setLevel(logging.WARNING)
             start_time = 0
@@ -341,7 +343,7 @@ class controllerThread(threading.Thread):
         '''
         main function used in thread to perform 3 channel algorithm
         '''
-        global time_diff, r_des, r_act, P_des, P_act, csv_logger
+        global time_diff, r_des, r_act, P_des, P_act, csv_logger, sample_num
 
         # get the actual pressure from the pressure sensor
         P_act[0] = arduino.getActualPressure(arduino.channel0)
@@ -363,9 +365,14 @@ class controllerThread(threading.Thread):
 
         # Log all control variables if needed / TODO: find out how to re-implement time_diff variable
         # TODO: figure out if logging works with vectors/matrices
-        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, r_des[0], r_des[1], r_act[0], r_act[1], P_des[0], P_des[1], P_des[2], P_act[0], P_act[1], P_act[2]))
+        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % \
+            (sample_num, time_diff, r_des[0], r_des[1], r_act[0], r_act[1], P_des[0], P_des[1], P_des[2], P_act[0], P_act[1], P_act[2]))
         if logging.getLogger().getEffectiveLevel() == logging.INFO:
-            csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (time_diff, r_des[0], r_des[1], r_act[0], r_act[1], P_des[0], P_des[1], P_des[2], P_act[0], P_act[1], P_act[2]))
+            csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % \
+                (sample_num, time_diff, r_des[0], r_des[1], r_act[0], r_act[1], P_des[0], P_des[1], P_des[2], P_act[0], P_act[1], P_act[2]))
+
+        # update sample number for next data point
+        sample_num = sample_num + 1
 
     def three_channel_algorithm(self):
         '''
