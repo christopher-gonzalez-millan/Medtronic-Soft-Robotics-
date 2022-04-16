@@ -46,16 +46,16 @@ P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to 
 P_act = np.array([0.0, 0.0, 0.0])           # actual pressure read from the pressure sensor (c0, c1, c2)
 r_des = np.array([0.0, 0.0])                # desired position of robot in form (x, y)
 r_act = np.array([0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
-# k_p = np.array([.05, .05, .05])             # 2X Scale - proportional controller gain for c0, c1, c2
-k_p = np.array([.02, .02, .02])             # 1X Scale - proportional controller gain for c0, c1, c2
-# k_i = np.array([0.05, 0.05, 0.05])          # 2X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
-k_i = np.array([0.01, 0.01, 0.01])          # 1X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+k_p = np.array([.05, .05, .05])             # 2X Scale - proportional controller gain for c0, c1, c2
+# k_p = np.array([.02, .02, .02])             # 1X Scale - proportional controller gain for c0, c1, c2
+k_i = np.array([0.05, 0.05, 0.05])          # 2X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+# k_i = np.array([0.01, 0.01, 0.01])          # 1X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
 dT = np.array([0.125, 0.125, 0.125])        # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)
 int_sum = np.array([0.0, 0.0, 0.0])         # sum of the integral term # TODO: figure out if this should be a global value
 err_r = np.array([0.0, 0.0])                # error between measured position and actual position
 epsi = np.array([0.0, 0.0, 0.0])            # stores the solution to the force vector algorithm
 epsi_prev = np.array([0.0, 0.0, 0.0])       # modified error in r (after force vector solution) for the previous time step # TODO: figure out if this should be a global value
-max_pressure = np.array([15.4, 15.1, 15.3])
+max_pressure = np.array([15.4, 15.4, 15.4])
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -265,10 +265,10 @@ class controllerThread(threading.Thread):
 
         time_diff = current_time - start_time   # time difference used in the signal / TODO: incorporate the data logger into this function
         
-        radius = 15                             # radius of the circle in mm
+        radius = 30                             # radius of the circle in mm
 
-        T = 30                                  # period of the circle (in seconds)
-        center = np.array([5.0, 5.0])           # center of the circle script (z, x)       
+        T = 60                                  # period of the circle (in seconds)
+        center = np.array([0, 0])           # center of the circle script (z, x)       
 
         # parametric equations that represent circcle as a function of time
         r_des[0] = center[0] + radius*cos((2*pi/T)*time_diff)        # in z
@@ -382,8 +382,8 @@ class controllerThread(threading.Thread):
         '''
         global r_des, r_act, err_r, P_des, P_act, k_p, k_i, dT, int_sum, epsi, epsi_prev, start_time, temp_start_time
 
-        if start_time > 0:
-            self.circle_signal()
+        # if temp_start_time > 0:
+        #     self.circle_signal()
 
         # Calculate the error between current and desired positions
         err_r = r_des - r_act
@@ -425,7 +425,7 @@ class controllerThread(threading.Thread):
         # array that contains C1, C2, C3 unit vectors
         A = np.array([[sqrt(3)/2, -sqrt(3)/2, 0], [1/2, 1/2, -1]])
 
-        # # perform unbounded least squares
+        # perform unbounded least squares
         sol = sp_opt.lsq_linear(A, err_r)
 
         # return the solution to the optimization (m, n, p)
@@ -455,9 +455,8 @@ class controllerThread(threading.Thread):
                 # lower limit of the pressure we are sending into the controller
                 P_des[i] = 9.0
             elif P_des[i] > max_pressure[i]:
-                print("CAPPIN")
                 # higher limit of the pressure we are sending into the controller
-                P_des[i] = 15.3
+                P_des[i] = max_pressure[i]
 
         # send each channel pressure
         arduino.sendDesiredPressure(arduino.channel0, float(P_des[0]))
