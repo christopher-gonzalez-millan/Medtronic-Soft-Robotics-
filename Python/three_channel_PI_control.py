@@ -45,17 +45,18 @@ P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to 
 P_act = np.array([0.0, 0.0, 0.0])           # actual pressure read from the pressure sensor (c0, c1, c2)
 r_des = np.array([0.0, 0.0])                # desired position of robot in form (x, y)
 r_act = np.array([0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
-k_p = np.array([.05, .05, .05])             # 2X Scale - proportional controller gain for c0, c1, c2
-# k_p = np.array([.02, .02, .02])             # 1X Scale - proportional controller gain for c0, c1, c2
-k_i = np.array([0.02, 0.02, 0.02])          # 2X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
-# k_i = np.array([0.01, 0.01, 0.01])          # 1X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
-k_d = np.array([0.01, 0.01, 0.01])          # Test derivative gain (TODO: figure out if this helps tracking)
+k_p = np.array([.04, .04, .04])             # 2X Scale - proportional controller gain for c0, c1, c2
+# k_p = np.array([.01, .01, .01])             # 1X Scale - proportional controller gain for c0, c1, c2
+k_i = np.array([0.01, 0.01, 0.01])          # 2X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+# k_i = np.array([0.0, 0.0, 0.0])          # 1X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+# k_d = np.array([0.001, 0.001, 0.001])          # Test derivative gain (TODO: figure out if this helps tracking)
+k_d = np.array([0.001, 0.001, 0.001])          # Test derivative gain (TODO: figure out if this helps tracking)
 dT = np.array([0.125, 0.125, 0.125])        # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)
 int_sum = np.array([0.0, 0.0, 0.0])         # sum of the integral term # TODO: figure out if this should be a global value
 err_r = np.array([0.0, 0.0])                # error between measured position and actual position
 epsi = np.array([0.0, 0.0, 0.0])            # stores the solution to the force vector algorithm
 epsi_prev = np.array([0.0, 0.0, 0.0])       # modified error in r (after force vector solution) for the previous time step # TODO: figure out if this should be a global value
-max_pressure = np.array([15.7, 15.7, 15.7])
+max_pressure = np.array([16.5, 16.5, 16.5])
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()

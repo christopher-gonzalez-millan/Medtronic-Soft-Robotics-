@@ -203,9 +203,9 @@ class controllerThread(threading.Thread):
             if P_des[channel] < 9.0:
                 # lower limit of the pressure we are sending into the controller
                 P_des[channel] = 9.0
-            elif P_des[channel] > 16.0:
+            elif P_des[channel] > 17.0:
                 # higher limit of the pressure we are sending into the controller
-                P_des[channel] = 16.0
+                P_des[channel] = 17.0
 
         # get the actual pressure from the pressure sensor
         P_act[0] = arduino.getActualPressure(arduino.channel0)
