@@ -13,7 +13,10 @@ close all
 % specify directory of interest
 files = dir('4-16-22\*.xlsx');
 
-% get data from all the files in the directory
+% % get data from all the files in the directory (one channel)
+% [time_meas, time_plot, x_des, x_act] = get_data(files);
+
+% get data from all the files in the directory (three channel)
 [time_meas, time_plot, z_des, z_act, x_des, x_act] = get_data_three_channel(files);
 
 %% Plot the reference and tracked signals for the ramp input signal
@@ -28,7 +31,7 @@ files = dir('4-16-22\*.xlsx');
 % ramp_time = [time_meas(1), time_meas(2)];         % reorganize ramp data
 % ramp_x_des = [x_des(1), x_des(2)];
 % ramp_x_act = [x_act(1), x_act(2)];
-
+% 
 % ramp_plotter_func(ramp_time, ramp_x_des, ramp_x_act, ramp_period, ramp_low_bd, ramp_up_bd);
 
 %% Plot the reference and tracked signals for the sinusoid input signal
@@ -218,17 +221,23 @@ function ramp_plotter_func(time_plot, x_des, x_act, period, low_bd, up_bd)
 % Determine the number of plots by counting the number of cells
 num_plots = length(time_plot);
 
-figure
-
 % loop to plot all the plots into a single figure
 for i = 1:num_plots
-    subplot(num_plots, 1, i);
-    plot(time_plot{i},x_des{i},'LineWidth',1.5);        % reference position
+    % find the lowest required time for plotting
+    for j = 1:length(time_plot{i})
+        if time_plot{i}(j) > 60
+            break;
+        end
+    end
+    
+    figure
+%     subplot(num_plots, 1, i);
+    plot(time_plot{i}(1:j),x_des{i}(1:j),'LineWidth',1.5);        % reference position
     hold on 
-    plot(time_plot{i},x_act{i},'LineWidth',1);        % actual position
+    plot(time_plot{i}(1:j),x_act{i}(1:j),'LineWidth',1);        % actual position
     legend('Reference','Actual', 'Location', 'northeast');
     ylim([low_bd(i)-5, up_bd(i)+10]);
-    xlim([0, time_plot{i}(end)+ 0.5]);
+    xlim([0, time_plot{i}(j)+ 0.5]);
     ylabel('x position [mm]');
     xlabel('time [sec]');
     title("Ramp Signal Response (" + low_bd(i) + " mm to " + up_bd(i) + " mm, T = " + period(i) + " s)");
@@ -291,10 +300,11 @@ num_plots = length(time_plot);
 for i = 1:num_plots
     % find the time where we have drawn one circle based on the period
     for j = 1:length(time_plot{i})
-        if time_plot{i}(j) >= 60
+        if time_plot{i}(j) > 60
             break;
         end
     end
+    
     figure
     plot(z_des{i}(1:j), x_des{i}(1:j),'LineWidth',1.5);        % reference circle
     hold on 
