@@ -164,6 +164,83 @@ class ResizingCanvas(tk.Canvas):
         self.config(width=self.width, height=self.height)
         # rescale all the objects tagged with the "all" tag
         self.scale("all",0,0,wscale,hscale)
+        
+class pidTuningWindow(tk.Frame):
+    def __init__(self, parent, *args, **kwargs):
+        tk.Frame.__init__(self, parent, *args, **kwargs)
+        self.parent = parent
+        self.width, self.height = parent.winfo_screenwidth(), parent.winfo_screenheight()
+        self.canvas = ResizingCanvas(
+            self, 
+            bg = "#626262", 
+            height = self.height,
+            width = self.width,
+            bd = 0,
+            highlightthickness = 0,
+            borderwidth=2,
+            relief = "raised")
+        self.buildGUI()
+        self.canvas.pack(expand = 1, fill ="both")
+        
+    def buildGUI(self):
+        # <=== ROW 0 ===>
+        command_label = ttk.Label(self, text = "PID Tuning")
+        command_label.grid(row = 0, column = 0, pady = 2, padx = (2,0))
+        # <=== ROW 3 ===>
+        # Text label for proportional gain entry
+        kp_label = ttk.Label(self, text = "Enter kp:")
+        kp_label.grid(row = 3, column = 0, pady = 2, padx = (30,0))
+        #Create an Entry widget to accept User Input
+        self.kp_entry = ttk.Entry(self, width= 10)
+        self.kp_entry.grid(row = 3, column = 1, pady = 2)
+        self.kp_entry.bind("<Return>", self.handleSetKpCommand)
+
+        # <=== ROW 4 ===>
+        # Text label for integral gain entry
+        ki_label = ttk.Label(self, text = "Enter ki:")
+        ki_label.grid(row = 4, column = 0, pady = 2, padx = (30,0))
+        #Create an Entry widget to accept User Input
+        self.ki_entry = ttk.Entry(self, width= 10)
+        self.ki_entry.grid(row = 4, column = 1,  pady = 2)
+        self.ki_entry.bind("<Return>", self.handleSetKiCommand)
+
+        # <=== ROW 5 ===>
+        # Text label for derivative gain entry
+        kd_label = ttk.Label(self, text = "Enter kd:")
+        kd_label.grid(row = 5, column = 0, pady = 2, padx = (30,0))
+        #Create an Entry widget to accept User Input
+        self.kd_entry = ttk.Entry(self, width= 10)
+        self.kd_entry.grid(row = 5, column = 1, pady = 2)
+        self.kd_entry.bind("<Return>", self.handleSetKdCommand)
+
+    def handleSetKpCommand(self, *args):
+        '''
+        Handle setting the gain from the GUI
+        '''
+        newCmd = command("EM_Sensor", "setKp", float(self.kp_entry.get()))
+        commandsFromGUI.put(newCmd)
+
+    def handleSetKiCommand(self, *args):
+        '''
+        Handle setting the gain from the GUI
+        '''
+        newCmd = command("EM_Sensor", "setKi", float(self.ki_entry.get()))
+        commandsFromGUI.put(newCmd)
+
+    def handleSetKdCommand(self, *args):
+        '''
+        Handle setting the gain from the GUI
+        '''
+        newCmd = command("EM_Sensor", "setKd", float(self.kd_entry.get()))
+        commandsFromGUI.put(newCmd)
+        
+    def updateDisplay():
+        global k_p, k_i, k_d
+        
+        #self.channel0Text.configure(text = str(round(P_act[0],3)))
+        #self.channel1Text.configure(text = str(round(P_act[1],3)))
+        #self.channel2Text.configure(text = str(round(P_act[2],3)))
+        
 
 class shalomWindow(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -479,13 +556,16 @@ class App:
         # create a navagiation bar
         self.navbar = ttk.Notebook(self.parent)
         self.controlFrame = controlWindow(self.navbar)
+        self.pidFrame = pidTuningWindow(self.navbar)
         self.shalomFrame = shalomWindow(self.navbar) 
         
         self.navbar.pack(expand = 1, fill ="both")
         self.controlFrame.pack(expand = 1, fill ="both")
+        self.pidFrame.pack(expand = 1, fill ="both")
         self.shalomFrame.pack(expand = 1, fill ="both")
         
         self.navbar.add(self.controlFrame, text='Controls')
+        self.navbar.add(self.pidFrame, text='PIDtuning')
         self.navbar.add(self.shalomFrame, text='Shalom')
 
 """
