@@ -14,15 +14,15 @@ import threading
 from queue import Queue
 import logging
 from csv_logger import CsvLogger
-from NDI_Code.NDISensor import NDISensor
-from Py_Arduino_Communication.arduino_control import arduino_control
+#from NDI_Code.NDISensor import NDISensor
+#from Py_Arduino_Communication.arduino_control import arduino_control
 import numpy as np 
 from PIL import Image,  ImageTk
 import time
 from scipy import signal as sg
 import scipy.optimize as sp_opt
 import matplotlib.pyplot as plt
-#from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path("./assets")
@@ -43,9 +43,9 @@ csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
                         level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
 sample_num = 0          # variable to keep track of the samples for any data collection
 # Init EM Nav and Arduino
-ndi = NDISensor.NDISensor()
-arduino = arduino_control.arduino()
-arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
+#ndi = NDISensor.NDISensor()
+#arduino = arduino_control.arduino()
+#arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
 
 # Parameters for controller
 z_des = 40.0     # stores the desired z position input by user
@@ -71,6 +71,8 @@ epsi = np.array([0.0, 0.0, 0.0])            # stores the solution to the force v
 epsi_prev = np.array([0.0, 0.0, 0.0])       # modified error in r (after force vector solution) for the previous time step # TODO: figure out if this should be a global value
 max_pressure = np.array([16.5, 16.5, 16.5])
 
+#thread for controller
+cThread = None
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -81,6 +83,68 @@ class command:
         self.id = id
         self.field1 = field1
         self.field2 = field2
+        
+class projectPostition:
+    def __init__(self, parent):
+        self.parent = parent
+        self.center, self.radius = self.defineCircle((0,1), (1,0), (0,-1))
+        self.x = 0
+        self.y = 0
+        self.buildProjectionWidget()
+        
+    def updatePosition(self, x, y):
+        self.x = x
+        self.y = y
+    
+    def buildProjectionWidget(self):
+        self.figure, self.axes  = plt.subplots() 
+        self.figure.set_facecolor("#424242",)
+        # change all spines
+        for axis in ['top','bottom','left','right']:
+            self.axes .spines[axis].set_linewidth(2)
+        # increase tick width
+        self.axes.tick_params(width=1)
+        #postiotn projection
+        self.posProjectionPlot = FigureCanvasTkAgg(self.figure, master=self.parent)
+        self.posProjectionPlot.get_tk_widget().place(relx=1464.5130615234375/2736,rely=116.35806274414062/1839,relwidth=1230/2736,relheight=1142/1839)
+        self.posProjectionPlot.draw()
+        
+    def plot(self):
+        self.axes.clear()
+        self.axes.set_xlim(-1.2, 1.2) #TODO update to gloabl max
+        self.axes.set_ylim(-1.2, 1.2)
+        plt.plot(self.x, self.y, 'ro', linewidth = 5) 
+        cc = plt.Circle(self.center, self.radius, fill=False)
+        plt.grid(True)
+        self.axes.set_aspect( 1 ) 
+        self.axes.add_artist( cc ) 
+        self.posProjectionPlot.draw()
+        
+    def defineCircle(self, p1, p2, p3):
+        """
+        Returns the center and radius of the circle passing the given 3 points.
+        In case the 3 points form a line, returns (None, infinity).
+        """
+        temp = p2[0] * p2[0] + p2[1] * p2[1]
+        bc = (p1[0] * p1[0] + p1[1] * p1[1] - temp) / 2
+        cd = (temp - p3[0] * p3[0] - p3[1] * p3[1]) / 2
+        det = (p1[0] - p2[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p2[1])
+    
+        if abs(det) < 1.0e-6:
+            return (None, np.inf)
+    
+        # Center of circle
+        cx = (bc*(p2[1] - p3[1]) - cd*(p1[1] - p2[1])) / det
+        cy = ((p1[0] - p2[0]) * cd - (p2[0] - p3[0]) * bc) / det
+    
+        radius = np.sqrt((cx - p1[0])**2 + (cy - p1[1])**2)
+        return ((cx, cy), radius)
+    
+    def inCircle(self, x, y):
+        if pow((x - self.center[0]), 2) + pow((y - self.center[1]), 2) <= pow(self.radius, 2):
+            return True
+        
+        return False
 
 # a subclass of Canvas for dealing with resizing of windows
 class ResizingCanvas(tk.Canvas):
@@ -142,16 +206,20 @@ class controlWindow(tk.Frame):
         self.canvas.pack(expand = 1, fill ="both")
         self.buildUX()
         self.buildUI()
-        self.GUI_handleDataDisplay()
+        self.updateDisplay()
         
     def buildUX(self):        
         """
         UX Rectangle: making pretty but unnecessary rectangles
         """
-        #TODO label what each rectangle represents, we can do this by changing the color of each and see what happens
+        #data recording container
         self.canvas.create_rectangle(1464.5130615234375, 1278.018798828125, 2694.99951171875, 1639.447021484375, width=1, fill="#424242", outline="black")
+        #channel pressure container
         self.canvas.create_rectangle(40.0,116.35806274414062, 721.0739135742188, 989.8941955566406, width=1, fill="#424242", outline="black")
+        #postion container
         self.canvas.create_rectangle(750.7725219726562, 767.9468383789062, 1431.846435546875, 1639.44677734375, width=1, fill="#424242", outline="black")
+        #controller type container
+        self.canvas.create_rectangle(40.0, 1019.8941955566406, 721.0739135742188, 1280.8941955566406, width=1, fill="#424242", outline="black")
 
         """
         UX Text: defining text that remains constant
@@ -181,12 +249,21 @@ class controlWindow(tk.Frame):
         self.canvas.create_text(186.5096893310547,810.7073364257812,anchor="nw",text="Channel 3 ",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
         self.canvas.create_text(81.57742309570312,556.1624145507812,anchor="nw",text="Desired Pressures:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
         
+        #controller type widget
+        self.canvas.create_text(252.0,1043.53613281,anchor="nw",text="Controller Type",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        
         #Graph titles
         self.canvas.create_text(1936,40.0,anchor="nw",text="Position Projection ",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
         self.canvas.create_text(922,40.0,anchor="nw",text="Curvature Visualization",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
         
+        self.medtronicPath = Image.open(relative_to_assets("medtronic.png"))
+        self.medtronicPath.resize((680, 121))
+        
+        self.medtronic = ImageTk.PhotoImage(file=relative_to_assets("medtronic.png"))
+        self.medtronicImage = tk.Label(self, image=self.medtronic)
+        self.medtronicImage.place(relx=40.0/2736,rely=1310/1839,relwidth=680/2736,relheight=121/1839)
+        
     def buildUI(self):
-
         #position text
         self.xPosText = ttk.Label(self, text='0.0')
         self.xPosText.place(relx=1113/2736,rely=928/1839,relwidth=169/2736,relheight=47/1839)
@@ -198,83 +275,126 @@ class controlWindow(tk.Frame):
         self.zPosText.place(relx=1113/2736,rely=1099/1839,relwidth=169/2736,relheight=47/1839)
         
         #position entry boxes
-        self.xPosEntry = ttk.Entry(self)
+        self.xPosEntry = ttk.Entry(self,state='disabled')
         self.xPosEntry.place(relx=1113/2736,rely=1288/1839,relwidth=169/2736,relheight=47/1839)
-        self.xPosEntry.bind("<Return>", self.GUI_handleSetXPositionCommand)
+        self.xPosEntry.bind("<Return>", self.handleSetXPositionCommand)
         
-        self.yPosEntry = ttk.Entry(self)
+        self.yPosEntry = ttk.Entry(self,state='disabled')
         self.yPosEntry.place(relx=1113/2736,rely=1373/1839,relwidth=169/2736,relheight=47/1839)
-        self.xPosEntry.bind("<Return>", self.GUI_handleSetYPositionCommand)
+        self.xPosEntry.bind("<Return>", self.handleSetYPositionCommand)
         
         self.zPosEntry = ttk.Entry(self, state='disabled')
         self.zPosEntry.place(relx=1113/2736,rely=1460/1839,relwidth=169/2736,relheight=47/1839)
-        self.xPosEntry.bind("<Return>", self.GUI_handleSetZPositionCommand)
+        self.zPosEntry.bind("<Return>", self.handleSetZPositionCommand)
         
         #Pressure text
-        self.channel0Text = ttk.Label(self)
+        self.channel0Text = ttk.Label(self, text='0.0')
         self.channel0Text.place(relx=402/2736,rely=279/1839,relwidth=169/2736,relheight=47/1839)
         
-        self.channel1Text = ttk.Label(self)
-        self.channel0Text.place(relx=402/2736,rely=364/1839,relwidth=169/2736,relheight=47/1839)
+        self.channel1Text = ttk.Label(self, text='0.0')
+        self.channel1Text.place(relx=402/2736,rely=364/1839,relwidth=169/2736,relheight=47/1839)
         
-        self.channel2Text = ttk.Label(self)
+        self.channel2Text = ttk.Label(self, text='0.0')
         self.channel2Text.place(relx=402/2736,rely=449/1839,relwidth=169/2736,relheight=47/1839)
         
         #Pressure Entry Boxes
-        self.channel0Entry = ttk.Entry(self)
+        self.channel0Entry = ttk.Entry(self,state='disabled')
         self.channel0Entry.place(relx=402/2736,rely=648/1839,relwidth=169/2736,relheight=47/1839)
+        self.channel0Entry.bind("<Return>", self.setChannel0)
         
-        self.channel1Entry = ttk.Entry(self)
+        self.channel1Entry = ttk.Entry(self,state='disabled')
         self.channel1Entry.place(relx=402/2736,rely=732/1839,relwidth=169/2736,relheight=47/1839)
+        self.channel1Entry.bind("<Return>", self.setChannel1)
         
-        self.channel2Entry = ttk.Entry(self)
+        self.channel2Entry = ttk.Entry(self,state='disabled')
         self.channel2Entry.place(relx=402/2736,rely=818/1839,relwidth=169/2736,relheight=47/1839)
+        self.channel2Entry.bind("<Return>", self.setChannel2)
         
-        """
-        Logging Buttons
-        """
-        self.stop = ttk.Button(self, text ="Stop Logging",command=lambda: self.GUI_handleLoggingCommand("stop"))
+        #Data Logging Buttons
+        self.stop = ttk.Button(self, text ="Stop Logging",command=lambda: self.handleLoggingCommand("stop"))
         self.stop.place(relx=1921/2736,rely=1439/1839,relwidth=314/2736,relheight=97/1839)
         
-        self.clear = ttk.Button(self, text ="Clear Log File",command=lambda: self.GUI_handleLoggingCommand("clear"))
+        self.clear = ttk.Button(self, text ="Clear Log File",command=lambda: self.handleLoggingCommand("clear"))
         self.clear.place(relx=2281/2736, rely=1439/1839,relwidth=314/2736,relheight=97/1839)
         
-        self.start = ttk.Button(self, text ="Start Logging",command=lambda: lambda: self.GUI_handleLoggingCommand("start"))
+        self.start = ttk.Button(self, text ="Start Logging",command=lambda: lambda: self.handleLoggingCommand("start"))
         self.start.place(relx=1565/2736,rely=1439/1839,relwidth=314/2736,relheight=97/1839)
         
+        #controller type buttons
+        self.open = ttk.Button(self, text ="Open Controller", command=lambda: self.startOpenControl())
+        self.open.place(relx=55/2736,rely=1113/1839,relwidth=314/2736,relheight=97/1839)
         
-    def GUI_handleDataDisplay(self, *args):
-        global r_des, r_act, y_des, y_act, int_sum
-
+        self.pid = ttk.Button(self, text ="PI Controller", command=lambda: self.startPidControl())
+        self.pid.place(relx=392/2736,rely=1113/1839,relwidth=314/2736,relheight=97/1839)
+        
+        #tye of controller
+        self.controllerTypeText = ttk.Label(self, text='No Controller Type Selected')
+        self.controllerTypeText.place(relx=362.0/2736,rely=1230/1839, anchor='n')
+        
+        #position projection
+        self.projectionWidget = projectPostition(self.canvas)
+        
+    def updateDisplay(self, *args):
+        global r_des, r_act, y_des, y_act, int_sum, P_act
+        
+        #update pressure 
+        self.channel0Text.configure(text = str(round(P_act[0],3)))
+        self.channel1Text.configure(text = str(round(P_act[1],3)))
+        self.channel2Text.configure(text = str(round(P_act[2],3)))
+        
+        #update postitoin
         self.xPosText.configure(text = str(round(r_act[1],3)))
         self.zPosText.configure(text = str(round(r_act[0],3)))
         self.yPosText.configure(text = str(round(z_act,3)))
-
-
+        
+        #update projection plot
+        self.projectionWidget.updatePosition(round(r_act[1],3), round(r_act[0],3))
+        self.projectionWidget.plot()                               
         # call again after 100 ms
-        self.parent.after(100, self.GUI_handleDataDisplay)
+        self.parent.after(100, self.updateDisplay)    
     
-    def GUI_handleSetXPositionCommand(self, *args):
+    def handleSetXPositionCommand(self, *args):
         '''
         Handle setting the position from the GUI
         '''
         newCmd = command("EM_Sensor", "setXPosition", float(self.x_position_entry.get()))
         commandsFromGUI.put(newCmd)
 
-    def GUI_handleSetYPositionCommand(self, *args):
+    def handleSetYPositionCommand(self, *args):
         '''
         Handle setting the position from the GUI
         '''
         newCmd = command("EM_Sensor", "setYPosition", float(self.y_position_entry.get()))
         commandsFromGUI.put(newCmd)
         
-    def GUI_handleSetZPositionCommand(self, *args):
+    def handleSetZPositionCommand(self, *args):
         '''
         Handle setting the position from the GUI
         '''
         print('error z entry box not disabled')
         
-    def GUI_handleLoggingCommand(self, status):
+    def setChannel0(self, *args):
+        '''
+        Handle setting the channel in pressure 0
+        '''
+        newCmd = command("Arduino", "setPressure", 0, float(self.channel0_entry.get())) # arduino.channel0
+        commandsFromGUI.put(newCmd)
+
+    def setChannel1(self, *args):
+        '''
+        Handle setting the channel in pressure 1
+        '''
+        newCmd = command("Arduino", "setPressure", 1, float(self.channel1_entry.get())) # arduino.channel1
+        commandsFromGUI.put(newCmd)
+    
+    def setChannel2(self, *args):
+        '''
+        Handle setting the channel in pressure 2
+        '''
+        newCmd = command("Arduino", "setPressure", 2, float(self.channel2_entry.get())) # arduino.channel2
+        commandsFromGUI.put(newCmd)        
+        
+    def handleLoggingCommand(self, status):
         '''
         Start logging
         '''
@@ -290,8 +410,65 @@ class controlWindow(tk.Frame):
         elif (status == "clear"):
             # Clear contents of log file
             with open('data.log', 'w'):
-                pass
-
+                pass   
+            
+    def startOpenControl(self):
+        global cThread
+        
+        #check if their is an active controller
+        if cThread:
+            self.stopPIDControl() #close controller
+        
+        #start new controller
+        cThread = openControllerThread('Thread 1')
+        cThread.start()
+        #activate gui
+        self.controllerTypeText.configure(text = 'Open Controller Type Selected')
+        self.channel0Entry.configure(state="normal")
+        self.channel1Entry.configure(state="normal")
+        self.channel2Entry.configure(state="normal")
+        
+    def stopOpenControl(self):
+        global cThread
+        
+        #disable gui
+        self.controllerTypeText.configure(text = 'No Controller Type Selected')
+        self.channel0Entry.configure(state="disable")
+        self.channel1Entry.configure(state="disable")
+        self.channel2Entry.configure(state="disable")
+        
+        cThread.raise_exception()
+        cThread.join()
+        
+    def startPidControl(self):
+        global cThread
+        
+        #check if their is an active controller
+        if cThread:
+            self.stopPIDControl() #close controller
+  
+        #start new controller
+        cThread = openControllerThread('Thread 1')
+        cThread.start()
+        #activate gui
+        self.controllerTypeText.configure(text ='PID Controller Type Selected')
+        self.xPosEntry.configure(state="normal")
+        self.yPosEntry.configure(state="normal")
+        self.zPosEntry.configure(state="normal")
+        
+    def stopPidControl(self):
+        global cThread
+        
+        #disable gui
+        self.controllerTypeText.configure(text = 'No Controller Type Selected')
+        self.xPosEntry.configure(state="disable")
+        self.xPosEntry.configure(state="disable")
+        self.zPosEntry.configure(state="disable")
+        
+        cThread.raise_exception()
+        cThread.join()
+     
+        
 class App:
     def __init__(self, parent):
         #parent window setup 
@@ -310,8 +487,104 @@ class App:
         
         self.navbar.add(self.controlFrame, text='Controls')
         self.navbar.add(self.shalomFrame, text='Shalom')
+
+"""
+class openControllerThread(threading.Thread):
+    '''
+    Implements proportional controller
+    '''
+    def __init__(self, name):
+        threading.Thread.__init__(self)
+        self.name = name
+
+    def run(self):
+        try:
+            while True:
+                # Look for new commands
+                if (commandsFromGUI.empty() == False):
+                    newCmd = commandsFromGUI.get()
+                    self.handleGUICommand(newCmd)
+
+                self.three_channel_main()
+                time.sleep(.07)
+
+        finally:
+            print('Controller thread teminated')
+
+    def three_channel_main(self):
+        '''
+        main function used in thread to perform 3 channel algorithm
+        '''
+        global P_des, P_act, r_act, csv_logger
+
+        for channel in range(3): 
+            if P_des[channel] < 9.0:
+                # lower limit of the pressure we are sending into the controller
+                P_des[channel] = 9.0
+            elif P_des[channel] > 17.0:
+                # higher limit of the pressure we are sending into the controller
+                P_des[channel] = 17.0
+
+        # get the actual pressure from the pressure sensor
+        P_act[0] = arduino.getActualPressure(arduino.channel0)
+        P_act[1] = arduino.getActualPressure(arduino.channel1)
+        P_act[2] = arduino.getActualPressure(arduino.channel2)
+
+        # get actual position from EM sensor
+        # position = ndi.getPositionInRange()
+        r_act[0] = 0 # position.deltaX          # x dim
+        r_act[1] = 0 # position.deltaY          # y dim
+
+        # perform 3 channel control algorithm
+        # self.three_channel_algorithm()
+
+        # send the desired pressure into Arduino
+        arduino.sendDesiredPressure(arduino.channel0, float(P_des[0]))
+        arduino.sendDesiredPressure(arduino.channel1, float(P_des[1]))
+        arduino.sendDesiredPressure(arduino.channel2, float(P_des[2]))
+
+        # Log all control variables if needed / TODO: find out how to re-implement time_diff variable
+        # TODO: figure out if logging works with vectors/matrices
+        # logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
+        # if logging.getLogger().getEffectiveLevel() == logging.INFO:
+        #    csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
+
+    def handleGUICommand(self, newCmd):
+        '''
+        Function to handle commands from the GUI.
+        Takes place on controller thread
+        '''
+        global P_des
         
-class controllerThread(threading.Thread):
+        if (newCmd.id == "Arduino"):
+            if (newCmd.field1 == "setPressure"):
+                P_des[newCmd.field2] = newCmd.field3
+                # print("Setting channel " + str(newCmd.field2) + " to " + str(newCmd.field3))
+
+
+    def get_id(self):
+        '''
+        returns id of the respective thread
+        '''
+        if hasattr(self, '_thread_id'):
+            return self._thread_id
+        for id, thread in threading._active.items():
+            if thread is self:
+                return id
+
+    def raise_exception(self):
+        '''
+        raise exception for controller thread
+        '''
+        thread_id = self.get_id()
+        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
+              ctypes.py_object(SystemExit))
+        if res > 1:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
+            print('Exception raise failure')
+
+        
+class pidControllerThread(threading.Thread):
     '''
     Implements proportional controller
     '''
@@ -570,14 +843,11 @@ class controllerThread(threading.Thread):
               ctypes.py_object(SystemExit))
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
-            print('Exception raise failure')
-            
+            print('Exception raise failure')       
+"""
+
+
 def main(): 
-
-    # Spin up controller thread
-    cThread = controllerThread('Thread 1')
-    cThread.start()
-
     #function to calibrate the correct DPI of current computer
     ctypes.windll.shcore.SetProcessDpiAwareness(1)
     # Designate main thread to GUI
@@ -588,9 +858,10 @@ def main():
     root.resizable(True, True)
     root.mainloop()
 
-    # Kill controller once GUI is exited
-    cThread.raise_exception()
-    cThread.join()
+    if cThread: 
+        # Kill controller once GUI is exited
+        cThread.raise_exception()
+        cThread.join()
 
 
 if __name__ == '__main__':
