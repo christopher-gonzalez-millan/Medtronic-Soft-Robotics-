@@ -179,39 +179,47 @@ class pidTuningWindow(tk.Frame):
             highlightthickness = 0,
             borderwidth=2,
             relief = "raised")
-        self.buildGUI()
+        self.buildUX()
+        self.buildUI()
         self.canvas.pack(expand = 1, fill ="both")
         
-    def buildGUI(self):
-        # <=== ROW 0 ===>
-        command_label = ttk.Label(self, text = "PID Tuning")
-        command_label.grid(row = 0, column = 0, pady = 2, padx = (2,0))
-        # <=== ROW 3 ===>
-        # Text label for proportional gain entry
-        kp_label = ttk.Label(self, text = "Enter kp:")
-        kp_label.grid(row = 3, column = 0, pady = 2, padx = (30,0))
-        #Create an Entry widget to accept User Input
-        self.kp_entry = ttk.Entry(self, width= 10)
-        self.kp_entry.grid(row = 3, column = 1, pady = 2)
-        self.kp_entry.bind("<Return>", self.handleSetKpCommand)
-
-        # <=== ROW 4 ===>
-        # Text label for integral gain entry
-        ki_label = ttk.Label(self, text = "Enter ki:")
-        ki_label.grid(row = 4, column = 0, pady = 2, padx = (30,0))
-        #Create an Entry widget to accept User Input
-        self.ki_entry = ttk.Entry(self, width= 10)
-        self.ki_entry.grid(row = 4, column = 1,  pady = 2)
-        self.ki_entry.bind("<Return>", self.handleSetKiCommand)
-
-        # <=== ROW 5 ===>
-        # Text label for derivative gain entry
-        kd_label = ttk.Label(self, text = "Enter kd:")
-        kd_label.grid(row = 5, column = 0, pady = 2, padx = (30,0))
-        #Create an Entry widget to accept User Input
-        self.kd_entry = ttk.Entry(self, width= 10)
-        self.kd_entry.grid(row = 5, column = 1, pady = 2)
-        self.kd_entry.bind("<Return>", self.handleSetKdCommand)
+    def buildUX(self):
+        # container
+        self.canvas.create_rectangle(40.0,40.0, 721.0739135742188, 913.536132813, width=1, fill="#424242", outline="black")
+        #air pressure widget
+        self.canvas.create_text(232.0, 60.0,anchor="nw",text="PID Tuning",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        self.canvas.create_text(81.57742309570312,115.77041625976562,anchor="nw",text="Current Values:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        self.canvas.create_text(186.5096893310547,201.29144287109375,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547,285.79437255859375,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547,371.31536865234375,anchor="nw",text="Channel 3",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547,638.647216796875,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547,558.1863403320312,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547,730.7073364257812,anchor="nw",text="Channel 3 ",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(81.57742309570312,476.1624145507812,anchor="nw",text="Desired values:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        
+    def buildUI(self):
+        #Pressure text
+        self.kpText = ttk.Label(self, text='0.0')
+        self.kpText.place(relx=402/2736,rely=199/1839,relwidth=169/2736,relheight=47/1839)
+        
+        self.kiText = ttk.Label(self, text='0.0')
+        self.kiText.place(relx=402/2736,rely=284/1839,relwidth=169/2736,relheight=47/1839)
+        
+        self.kdText = ttk.Label(self, text='0.0')
+        self.kdText.place(relx=402/2736,rely=369/1839,relwidth=169/2736,relheight=47/1839)
+        
+        #Pressure Entry Boxes
+        self.kpTextEntry = ttk.Entry(self)
+        self.kpTextEntry.place(relx=402/2736,rely=568/1839,relwidth=169/2736,relheight=47/1839)
+        self.kpTextEntry.bind("<Return>", self.handleSetKpCommand)
+        
+        self.kiTextEntry = ttk.Entry(self)
+        self.kiTextEntry.place(relx=402/2736,rely=652/1839,relwidth=169/2736,relheight=47/1839)
+        self.kiTextEntry.bind("<Return>", self.handleSetKiCommand)
+        
+        self.kdTextEntry = ttk.Entry(self)
+        self.kdTextEntry.place(relx=402/2736,rely=738/1839,relwidth=169/2736,relheight=47/1839)
+        self.kdTextEntry.bind("<Return>", self.handleSetKdCommand)
 
     def handleSetKpCommand(self, *args):
         '''
@@ -219,6 +227,7 @@ class pidTuningWindow(tk.Frame):
         '''
         newCmd = command("EM_Sensor", "setKp", float(self.kp_entry.get()))
         commandsFromGUI.put(newCmd)
+        self.updateDisplay()
 
     def handleSetKiCommand(self, *args):
         '''
@@ -226,6 +235,7 @@ class pidTuningWindow(tk.Frame):
         '''
         newCmd = command("EM_Sensor", "setKi", float(self.ki_entry.get()))
         commandsFromGUI.put(newCmd)
+        self.updateDisplay()
 
     def handleSetKdCommand(self, *args):
         '''
@@ -233,14 +243,14 @@ class pidTuningWindow(tk.Frame):
         '''
         newCmd = command("EM_Sensor", "setKd", float(self.kd_entry.get()))
         commandsFromGUI.put(newCmd)
+        self.updateDisplay()
         
-    def updateDisplay():
+    def updateDisplay(self):
         global k_p, k_i, k_d
         
-        #self.channel0Text.configure(text = str(round(P_act[0],3)))
-        #self.channel1Text.configure(text = str(round(P_act[1],3)))
-        #self.channel2Text.configure(text = str(round(P_act[2],3)))
-        
+        self.kpText.configure(text = k_p)
+        self.kiText.configure(text = k_i)
+        self.kdText.configure(text = k_d)
 
 class shalomWindow(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -333,12 +343,11 @@ class controlWindow(tk.Frame):
         self.canvas.create_text(1936,40.0,anchor="nw",text="Position Projection ",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
         self.canvas.create_text(922,40.0,anchor="nw",text="Curvature Visualization",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
         
-        self.medtronicPath = Image.open(relative_to_assets("medtronic.png"))
-        self.medtronicPath.resize((680, 121))
-        
-        self.medtronic = ImageTk.PhotoImage(file=relative_to_assets("medtronic.png"))
-        self.medtronicImage = tk.Label(self, image=self.medtronic)
-        self.medtronicImage.place(relx=40.0/2736,rely=1310/1839,relwidth=680/2736,relheight=121/1839)
+        #medtronic logo 
+        self.img = Image.open(relative_to_assets("medtronic1.png"))  # PIL solution
+        self.img = self.img.resize((690, 121)) #The (250, 250) is (height, width)
+        self.img = ImageTk.PhotoImage(self.img) # convert to PhotoImage
+        self.canvas.create_image(40.0, 1310.0, image=self.img, anchor='nw')
         
     def buildUI(self):
         #position text
@@ -543,8 +552,7 @@ class controlWindow(tk.Frame):
         self.zPosEntry.configure(state="disable")
         
         cThread.raise_exception()
-        cThread.join()
-     
+        cThread.join()    
         
 class App:
     def __init__(self, parent):
@@ -565,9 +573,17 @@ class App:
         self.shalomFrame.pack(expand = 1, fill ="both")
         
         self.navbar.add(self.controlFrame, text='Controls')
-        self.navbar.add(self.pidFrame, text='PIDtuning')
+        self.navbar.add(self.pidFrame, text='PID Tuning')
         self.navbar.add(self.shalomFrame, text='Shalom')
-
+    """    
+    def setup(self):
+        self.controlWindow.startOpenControl()
+        newCmd = command("Arduino", "setPressure", 0, float(max_pressure[0]) # arduino.channel0
+        commandsFromGUI.put(newCmd)
+        
+    """
+        
+        
 """
 class openControllerThread(threading.Thread):
     '''
