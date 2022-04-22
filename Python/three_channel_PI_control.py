@@ -40,23 +40,34 @@ z_act = 0.0     # actual z_position from EM sensor
 start_time = 0      # start time for the ramp and sinusoid signals
 time_diff = 0       # time difference betweeen the start and current times
 
+# <== 2X Robot Parameters ==>
+# k_p = np.array([.04, .04, .04])
+# k_i = np.array([0.01, 0.01, 0.01]) 
+# k_d = np.array([0.001, 0.001, 0.001])
+# max_pressure = np.array([16, 16, 16])
+# int_sum = 10, -10
+
+# <== 1X Robot Parameters ==>
+# k_p = np.array([.03, .03, .03])
+# k_i = np.array([0.01, 0.01, 0.01]) 
+# k_d = np.array([0.001, 0.001, 0.001])
+# max_pressure = np.array([15.5, 15.2, 15.5])
+# int_sum = 5, -5
+
 # Parameters for the 3 channel controller
 P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to the Arduino (c0, c1, c2)
 P_act = np.array([0.0, 0.0, 0.0])           # actual pressure read from the pressure sensor (c0, c1, c2)
 r_des = np.array([0.0, 0.0])                # desired position of robot in form (x, y)
 r_act = np.array([0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
-k_p = np.array([.04, .04, .04])             # 2X Scale - proportional controller gain for c0, c1, c2
-# k_p = np.array([.01, .01, .01])             # 1X Scale - proportional controller gain for c0, c1, c2
+k_p = np.array([.03, .03, .03])             # 1X Scale - proportional controller gain for c0, c1, c2
 k_i = np.array([0.01, 0.01, 0.01])          # 2X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
-# k_i = np.array([0.0, 0.0, 0.0])          # 1X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
-# k_d = np.array([0.001, 0.001, 0.001])          # Test derivative gain (TODO: figure out if this helps tracking)
 k_d = np.array([0.001, 0.001, 0.001])          # Test derivative gain (TODO: figure out if this helps tracking)
 dT = np.array([0.125, 0.125, 0.125])        # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)
 int_sum = np.array([0.0, 0.0, 0.0])         # sum of the integral term # TODO: figure out if this should be a global value
 err_r = np.array([0.0, 0.0])                # error between measured position and actual position
 epsi = np.array([0.0, 0.0, 0.0])            # stores the solution to the force vector algorithm
 epsi_prev = np.array([0.0, 0.0, 0.0])       # modified error in r (after force vector solution) for the previous time step # TODO: figure out if this should be a global value
-max_pressure = np.array([16.5, 16.5, 16.5])
+max_pressure = np.array([15.5, 15.2, 15.5])
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -429,10 +440,10 @@ class controllerThread(threading.Thread):
         # Calculate the integral sum for integral control
         int_sum = int_sum + 0.5*(epsi + epsi_prev)*dT               # these are all element-wise operations / TODO: check the matrix math here
         for i in range(len(int_sum)):                               # checks the integral sum to see if it's in range (hardcoded integral windup)
-            if int_sum[i] > 10:
-                int_sum[i] = 10
-            elif int_sum[i] < -10:
-                int_sum[i] = -10
+            if int_sum[i] > 5:
+                int_sum[i] = 5
+            elif int_sum[i] < -5:
+                int_sum[i] = -5
         
         # Calculate the derivative term of the controller (TODO: figure out if this term helps tracking)
         deriv = (epsi - epsi_prev)/dT

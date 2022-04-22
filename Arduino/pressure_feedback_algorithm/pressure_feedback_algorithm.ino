@@ -1,7 +1,11 @@
 /*
  * @file    pressure_feedback_algorithm.ino
  * @author  CU Boulder Medtronic Team 7
- * @brief   Basic method to hit desired pressure in any channel
+ * @brief   Bang-Bang controller to control pressure of all of the channels
+ *          on our main control board. Easiest way to use this script is to upload
+ *          it to the arduino then send in commands from one of our /Python scripts.
+ *          Our python scripts will handle the serial logistics and is easier to input
+ *          pressure commands.
  */
 
 #include <stdlib.h>
@@ -35,34 +39,35 @@
 #define SOLENOID_CLOSED LOW
 #define SOLENOID_OPEN HIGH
 // Because we are digitally manipulating these valves to simulate PWM,
-// We define a cycle time and a duty cycle.
+// We define a cycle time and a duty cycle. More information below
 #define SOLENOID_CYCLE_TIME_MS 5000
-#define POSITIVE_SOLENOID_DUTY_CYCLE .55
-#define POSITIVE_SOLENOID_DUTY_CYCLE_INCREASED .65
+#define POSITIVE_SOLENOID_DUTY_CYCLE .45
 #define NEGATIVE_SOLENOID_DUTY_CYCLE .35
 
 /*
  * Various pump PWM values. Due to hardware variability,
- * we run some pumps higher than others.
+ * we often run some pumps higher than others.
  */
-#define PUMP_PWM 130
-#define PUMP_PWM_INCREASED 130
+#define PUMP_PWM 100
+#define PUMP_PWM_INCREASED 100
 #define PUMP_OFF 0
 
-// Serial related defines
+/**
+ * These defines are used in the serial communication to/from the python scripts to our arduino.
+ * Every incoming message has a 2 byte header and a 4 byte body. See below or arduino_control.py
+ * to see more about the serial logistics
+ */
 #define MSG_HEADER_SIZE 2
 #define MSG_BODY_SIZE 4
 #define EXPECTED_MSG_LENGTH (MSG_HEADER_SIZE + MSG_BODY_SIZE)
-// Special message for selecting which channels you want to run on
-#define CHANNEL_SELECTION_MSG_LENGTH 3
 
-// Enabled when pressure sensor functions are defined here in file
+// Enabled when our pressure sensor functions are defined here in file
 #define LOCAL_PRESSURE_SENSOR_FUNCTIONS
 
-// Pin definitions for the pressure sensor
+// Pin definitions for the pressure sensors
 #define RESET_PIN  -1   // set to any GPIO pin # to hard-reset on begin()
 #define EOC_PIN    -1   // set to any GPIO pin to read end-of-conversion by pin
-#define TCAADDR    0x70 // address for the mux
+#define TCAADDR    0x70 // address for the multiplexer
 
 // Instantiate mpr class for pressure sensors
 Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
@@ -77,23 +82,26 @@ typedef enum {
 // Data stored for each channel
 struct channelData 
 {
-    uint8_t active;         // Whether or not channel is active
-    state currentState;     // Current state of channel (defiend by 'state' enum)
+    uint8_t active;         // Whether or not channel is active. If inactive, you can still send serial
+                            // commands to that channel but the pumps will not turn on
+    state currentState;     // Current state of channel
     float currentPressure;  // Current pressure read from sensors
     float desiredPressure;  // Pressure that controller is trying to reach
     int positivePump;       // I/O Pins for all hardware for the channel
     int negativePump;
     int positiveSolenoid;
     int negativeSolenoid;
-    int pumpPWM;            // PWM value for both pumps on the channel
-    float positiveSolenoidDutyCycle;
+    // Custom PWM values for our channels. These values have been manually chosen
+    // by experimenting what works best for each part, as our hardware is inconsistent
+    int pumpPWM;                     // PWM value for both pumps on the channel
+    float positiveSolenoidDutyCycle; // PWM value for positive solenoid
 };
 
 channelData channels[NUM_CHANNELS] =
 {
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 12, 11, 52, 53, PUMP_PWM, POSITIVE_SOLENOID_DUTY_CYCLE_INCREASED},  // Channel 0
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10,  9, 50, 51, PUMP_PWM, POSITIVE_SOLENOID_DUTY_CYCLE_INCREASED},  // Channel 1
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 8,   7, 48, 49, PUMP_PWM_INCREASED, POSITIVE_SOLENOID_DUTY_CYCLE_INCREASED}, // Channel 2
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 12, 11, 52, 53, PUMP_PWM, POSITIVE_SOLENOID_DUTY_CYCLE},  // Channel 0
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10,  9, 50, 51, PUMP_PWM, POSITIVE_SOLENOID_DUTY_CYCLE},  // Channel 1
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 8,   7, 48, 49, PUMP_PWM_INCREASED, POSITIVE_SOLENOID_DUTY_CYCLE}, // Channel 2
 };
 
 /*
@@ -119,7 +127,7 @@ void setup() {
     Serial.println("Arduino Setup Complete");
 
     // Initialize all channels to default pressure in case any data is
-    // persisting between differnet uploads
+    // persisting between different uploads
     for (int8_t cNum = 0; cNum < NUM_CHANNELS; cNum++)
     {
         channels[cNum].desiredPressure = DEFAULT_PRESSURE;
@@ -139,11 +147,17 @@ void loop() {
         handleCommand();
     }
 
-    // Update I/O if needed based on last command
+    /**
+     * This is our primary loop for the controller. This loops through each channel
+     * to update the current pressure, and determines if any state transitions are necessary.
+     * Once it finds the state that it needs to be in (HOLD, DEFLATE, or INFLATE), it will
+     * control the hardware accordingly.
+     */
     for (int8_t cNum = 0; cNum < NUM_CHANNELS; cNum++)
     {
         if(channels[cNum].active)
         {
+            // Update current pressure
             channels[cNum].currentPressure = get_pressure(mpr, cNum);
 
             // Switch for determining whether or not we need to change the state
@@ -240,6 +254,29 @@ void loop() {
  */
 void handleCommand(void)
 {
+    /**
+     * First 2 bytes of the message are the header.
+     * The header specifies either the channel that the command
+     * applies to, or speicifies that the command is used to enable
+     * or disable channels.
+     * Header options:
+     *      'c0' - command for channel 0
+     *      'c1' - command for channel 1
+     *      'c2' - command for channel 2
+     *      'sc' - select channel
+     * 
+     * The next 4 bytes is the body of the message.
+     * body options
+     *      'read' - command is to read the pressure in that channel
+     *      - If the header was a channel, and the command is not 'read',
+     *        then the body is assumed to be the pressure magnitude you would
+     *        like to set to. This is a 4 digit number with an implied decimal
+     *        in the middle. This means that if you send '0900' over serial, it
+     *        will set the pressure for that channel to 9.00 (two decimal precision
+     *        is required for all pressure commands)
+     *      - If the header was 'sc', the body will contain a byte for
+     *        each of the channels. See handleSelectionCommand()
+     */
     char header[2];
     char msg[4];
 
@@ -300,7 +337,18 @@ void handleCommand(void)
 
 /*
  * @name    handleSelctionCommand
- * @desc    Handle command for channel selection
+ * @desc    Handle command for channel selection. This starts
+ *          reading the serial buffer at the start of the body of the
+ *          incoming message. As specified above, the body is 4 bytes.
+ *          
+ *          byte 0 (first byte read) - indicates whether or not you want to turn
+ *                                     channel 0 on.
+ *          byte 1 - indicates whether or not you want to turn channel 1 on
+ *          byte 2 - indicates whether or not you want to turn channel 2 on
+ *          byte 3 - unused, last byte in body
+ * 
+ *          Enabled is represented by 1, disabled is represented by 0
+ * 
  * @param   None
  * @return  None
  */
@@ -324,7 +372,9 @@ void handleSelectionCommand(void)
 #if defined(LOCAL_PRESSURE_SENSOR_FUNCTIONS)
 /*
  * @name    scanner
- * @desc    Scan for connections to the multiplexer 
+ * @desc    Scan for connections to the multiplexer. This goes through all
+ *          8 ports on our multiplexer to see what is currently connected.
+ *          Right now, we should be using 3 ports (one for each pressure sensor)
  * @param   None
  * @return  None
  */
@@ -373,7 +423,9 @@ void sensor_initialization()
 
 /*
  * @name    tcaselect
- * @desc    Select device TCA is connected to
+ * @desc    Select device TCA is connected to.
+ *          We use this to select which pressure sensor we are
+ *          communicating with (can only be one at a time)
  * @param   i - which port you want to connect to
  * @return  None
  */
@@ -390,13 +442,15 @@ void tcaselect(uint8_t i) {
 
 /*
  * @name    get_pressure
- * @desc    Function to return the pressure readings
+ * @desc    Function to return the pressure reading for a
+ *          specific channel
  * @param   readDelay - how frequent pressure will be logged
  * @return  None
  */ 
 float get_pressure(Adafruit_MPRLS mpr, uint8_t channelNum)
 {
     tcaselect(channelNum);
+    // Converting hPa to PSI
     float pressure_hPa0 = mpr.readPressure();
     float presssure_PSI = (pressure_hPa0 / 68.947572932);
     return presssure_PSI;
