@@ -41,15 +41,15 @@
 // Because we are digitally manipulating these valves to simulate PWM,
 // We define a cycle time and a duty cycle. More information below
 #define SOLENOID_CYCLE_TIME_MS 5000
-#define POSITIVE_SOLENOID_DUTY_CYCLE .45
+#define POSITIVE_SOLENOID_DUTY_CYCLE .65
 #define NEGATIVE_SOLENOID_DUTY_CYCLE .35
 
 /*
  * Various pump PWM values. Due to hardware variability,
  * we often run some pumps higher than others.
  */
-#define PUMP_PWM 100
-#define PUMP_PWM_INCREASED 100
+#define PUMP_PWM 150
+#define PUMP_PWM_INCREASED 150
 #define PUMP_OFF 0
 
 /**
@@ -100,8 +100,8 @@ struct channelData
 channelData channels[NUM_CHANNELS] =
 {
     {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 12, 11, 52, 53, PUMP_PWM, POSITIVE_SOLENOID_DUTY_CYCLE},  // Channel 0
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10,  9, 50, 51, PUMP_PWM, POSITIVE_SOLENOID_DUTY_CYCLE},  // Channel 1
-    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 8,   7, 48, 49, PUMP_PWM_INCREASED, POSITIVE_SOLENOID_DUTY_CYCLE}, // Channel 2
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 10,  9, 50, 51, 160, POSITIVE_SOLENOID_DUTY_CYCLE},  // Channel 1
+    {OFF, HOLD, DEFAULT_PRESSURE, DEFAULT_PRESSURE, 8,   7, 48, 49, 160, POSITIVE_SOLENOID_DUTY_CYCLE}, // Channel 2
 };
 
 /*
@@ -410,8 +410,9 @@ void scanner()
  */
 void sensor_initialization()
 {
-    for (uint8_t i = 0; i < 3; i++)
+    for (uint8_t i = 1; i < 3; i++)
     {
+        // Serial.println(i);
         tcaselect(i);
         if (!mpr.begin())
         {

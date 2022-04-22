@@ -14,8 +14,8 @@ import threading
 from queue import Queue
 import logging
 from csv_logger import CsvLogger
-#from NDI_Code.NDISensor import NDISensor
-#from Py_Arduino_Communication.arduino_control import arduino_control
+# from NDI_Code.NDISensor import NDISensor
+# from Py_Arduino_Communication.arduino_control import arduino_control
 import numpy as np 
 from PIL import Image,  ImageTk
 import time
@@ -43,9 +43,9 @@ csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
                         level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
 sample_num = 0          # variable to keep track of the samples for any data collection
 # Init EM Nav and Arduino
-#ndi = NDISensor.NDISensor()
-#arduino = arduino_control.arduino()
-#arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
+# ndi = NDISensor.NDISensor()
+# arduino = arduino_control.arduino()
+# arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
 
 # Parameters for controller
 z_des = 40.0     # stores the desired z position input by user
@@ -58,18 +58,15 @@ P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to 
 P_act = np.array([0.0, 0.0, 0.0])           # actual pressure read from the pressure sensor (c0, c1, c2)
 r_des = np.array([0.0, 0.0])                # desired position of robot in form (x, y)
 r_act = np.array([0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
-k_p = np.array([.04, .04, .04])             # 2X Scale - proportional controller gain for c0, c1, c2
-# k_p = np.array([.01, .01, .01])             # 1X Scale - proportional controller gain for c0, c1, c2
+k_p = np.array([.03, .03, .03])             # 1X Scale - proportional controller gain for c0, c1, c2
 k_i = np.array([0.01, 0.01, 0.01])          # 2X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
-# k_i = np.array([0.0, 0.0, 0.0])          # 1X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
-# k_d = np.array([0.001, 0.001, 0.001])          # Test derivative gain (TODO: figure out if this helps tracking)
 k_d = np.array([0.001, 0.001, 0.001])          # Test derivative gain (TODO: figure out if this helps tracking)
 dT = np.array([0.125, 0.125, 0.125])        # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)
 int_sum = np.array([0.0, 0.0, 0.0])         # sum of the integral term # TODO: figure out if this should be a global value
 err_r = np.array([0.0, 0.0])                # error between measured position and actual position
 epsi = np.array([0.0, 0.0, 0.0])            # stores the solution to the force vector algorithm
 epsi_prev = np.array([0.0, 0.0, 0.0])       # modified error in r (after force vector solution) for the previous time step # TODO: figure out if this should be a global value
-max_pressure = np.array([16.5, 16.5, 16.5])
+max_pressure = np.array([15.5, 15.2, 15.5])
 
 #thread for controller
 cThread = None
@@ -79,10 +76,18 @@ commandsFromGUI = Queue()
 
 # Class used for all commands
 class command:
-    def __init__(self, id, field1, field2):
-        self.id = id
-        self.field1 = field1
-        self.field2 = field2
+    def __init__(self, *args):
+        if len(args) == 3:
+            self.id = args[0]
+            self.field1 = args[1]
+            self.field2 = args[2]
+
+        elif len(args) == 4:
+            self.id = args[0]
+            self.field1 = args[1]
+            self.field2 = args[2]
+            self.field3 = args[3]
+            
         
 class projectPostition:
     def __init__(self, parent):
@@ -106,7 +111,7 @@ class projectPostition:
         self.axes.tick_params(width=1)
         #postiotn projection
         self.posProjectionPlot = FigureCanvasTkAgg(self.figure, master=self.parent)
-        self.posProjectionPlot.get_tk_widget().place(relx=1464.5130615234375/2736,rely=116.35806274414062/1839,relwidth=1230/2736,relheight=1142/1839)
+        self.posProjectionPlot.get_tk_widget().place(relx=1464.5130615234375/2736,rely=116.35806274414062/1824,relwidth=1230/2736,relheight=1142/1824)
         self.posProjectionPlot.draw()
         
     def plot(self):
@@ -182,50 +187,51 @@ class pidTuningWindow(tk.Frame):
         self.buildUX()
         self.buildUI()
         self.canvas.pack(expand = 1, fill ="both")
+        self.updateDisplay()
         
     def buildUX(self):
         # container
-        self.canvas.create_rectangle(40.0,40.0, 721.0739135742188, 913.536132813, width=1, fill="#424242", outline="black")
+        self.canvas.create_rectangle(40.0 ,40.0 , 721.0739135742188 , 913.536132813 , width=1, fill="#424242", outline="black")
         #air pressure widget
-        self.canvas.create_text(232.0, 60.0,anchor="nw",text="PID Tuning",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
-        self.canvas.create_text(81.57742309570312,115.77041625976562,anchor="nw",text="Current Values:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
-        self.canvas.create_text(186.5096893310547,201.29144287109375,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(186.5096893310547,285.79437255859375,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(186.5096893310547,371.31536865234375,anchor="nw",text="Channel 3",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(186.5096893310547,638.647216796875,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(186.5096893310547,558.1863403320312,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(186.5096893310547,730.7073364257812,anchor="nw",text="Channel 3 ",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(81.57742309570312,476.1624145507812,anchor="nw",text="Desired values:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        self.canvas.create_text(232.0 , 60.0 ,anchor="nw",text="PID Tuning",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        self.canvas.create_text(81.57742309570312 ,115.77041625976562 ,anchor="nw",text="Current Values:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        self.canvas.create_text(186.5096893310547 ,201.29144287109375 ,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547 ,285.79437255859375 ,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547 ,371.31536865234375 ,anchor="nw",text="Channel 3",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547 ,638.647216796875 ,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547 ,558.1863403320312 ,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547 ,730.7073364257812 ,anchor="nw",text="Channel 3 ",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(81.57742309570312 ,476.1624145507812 ,anchor="nw",text="Desired values:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
         
     def buildUI(self):
         #Pressure text
         self.kpText = ttk.Label(self, text='0.0')
-        self.kpText.place(relx=402/2736,rely=199/1839,relwidth=169/2736,relheight=47/1839)
+        self.kpText.place(relx=402/2736,rely=199/1824,relwidth=169/2736,relheight=47/1824)
         
         self.kiText = ttk.Label(self, text='0.0')
-        self.kiText.place(relx=402/2736,rely=284/1839,relwidth=169/2736,relheight=47/1839)
+        self.kiText.place(relx=402/2736,rely=284/1824,relwidth=169/2736,relheight=47/1824)
         
         self.kdText = ttk.Label(self, text='0.0')
-        self.kdText.place(relx=402/2736,rely=369/1839,relwidth=169/2736,relheight=47/1839)
+        self.kdText.place(relx=402/2736,rely=369/1824,relwidth=169/2736,relheight=47/1824)
         
         #Pressure Entry Boxes
         self.kpTextEntry = ttk.Entry(self)
-        self.kpTextEntry.place(relx=402/2736,rely=568/1839,relwidth=169/2736,relheight=47/1839)
+        self.kpTextEntry.place(relx=402/2736,rely=568/1824,relwidth=169/2736,relheight=47/1824)
         self.kpTextEntry.bind("<Return>", self.handleSetKpCommand)
         
         self.kiTextEntry = ttk.Entry(self)
-        self.kiTextEntry.place(relx=402/2736,rely=652/1839,relwidth=169/2736,relheight=47/1839)
+        self.kiTextEntry.place(relx=402/2736,rely=652/1824,relwidth=169/2736,relheight=47/1824)
         self.kiTextEntry.bind("<Return>", self.handleSetKiCommand)
         
         self.kdTextEntry = ttk.Entry(self)
-        self.kdTextEntry.place(relx=402/2736,rely=738/1839,relwidth=169/2736,relheight=47/1839)
+        self.kdTextEntry.place(relx=402/2736,rely=738/1824,relwidth=169/2736,relheight=47/1824)
         self.kdTextEntry.bind("<Return>", self.handleSetKdCommand)
 
     def handleSetKpCommand(self, *args):
         '''
         Handle setting the gain from the GUI
         '''
-        newCmd = command("EM_Sensor", "setKp", float(self.kp_entry.get()))
+        newCmd = command("EM_Sensor", "setKp", float(self.kpTextEntry.get()))
         commandsFromGUI.put(newCmd)
         self.updateDisplay()
 
@@ -233,7 +239,7 @@ class pidTuningWindow(tk.Frame):
         '''
         Handle setting the gain from the GUI
         '''
-        newCmd = command("EM_Sensor", "setKi", float(self.ki_entry.get()))
+        newCmd = command("EM_Sensor", "setKi", float(self.kiTextEntry.get()))
         commandsFromGUI.put(newCmd)
         self.updateDisplay()
 
@@ -241,7 +247,7 @@ class pidTuningWindow(tk.Frame):
         '''
         Handle setting the gain from the GUI
         '''
-        newCmd = command("EM_Sensor", "setKd", float(self.kd_entry.get()))
+        newCmd = command("EM_Sensor", "setKd", float(self.kdTextEntry.get()))
         commandsFromGUI.put(newCmd)
         self.updateDisplay()
         
@@ -300,122 +306,122 @@ class controlWindow(tk.Frame):
         UX Rectangle: making pretty but unnecessary rectangles
         """
         #data recording container
-        self.canvas.create_rectangle(1464.5130615234375, 1278.018798828125, 2694.99951171875, 1639.447021484375, width=1, fill="#424242", outline="black")
+        self.canvas.create_rectangle(1464.5130615234375 , 1278.018798828125 , 2694.99951171875 , 1639.447021484375 , width=1, fill="#424242", outline="black")
         #channel pressure container
-        self.canvas.create_rectangle(40.0,116.35806274414062, 721.0739135742188, 989.8941955566406, width=1, fill="#424242", outline="black")
+        self.canvas.create_rectangle(40.0 ,116.35806274414062 , 721.0739135742188 , 989.8941955566406 , width=1, fill="#424242", outline="black")
         #postion container
-        self.canvas.create_rectangle(750.7725219726562, 767.9468383789062, 1431.846435546875, 1639.44677734375, width=1, fill="#424242", outline="black")
+        self.canvas.create_rectangle(750.7725219726562 , 767.9468383789062 , 1431.846435546875 , 1639.44677734375 , width=1, fill="#424242", outline="black")
         #controller type container
-        self.canvas.create_rectangle(40.0, 1019.8941955566406, 721.0739135742188, 1280.8941955566406, width=1, fill="#424242", outline="black")
+        self.canvas.create_rectangle(40.0 , 1019.8941955566406 , 721.0739135742188 , 1280.8941955566406 , width=1, fill="#424242", outline="black")
 
         """
         UX Text: defining text that remains constant
         """
         #data loggin widget
-        self.canvas.create_text(1953.540283203125,1315.688720703125,anchor="nw",text="Data Recording",fill="#ffffff", font=("TkDefaultFont", 32 * -1))
+        self.canvas.create_text(1953.540283203125 ,1315.688720703125 ,anchor="nw",text="Data Recording",fill="#ffffff", font=("TkDefaultFont", 32 * -1))
         
         #position widget
-        self.canvas.create_text(967.5676879882812,787.2908935546875,anchor="nw",text="Positioning",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
-        self.canvas.create_text(793.3386840820312,845.3230590820312,anchor="nw",text="Current Position:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
-        self.canvas.create_text(899.2613525390625,930.8441772460938,anchor="nw",text="x coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(899.2613525390625,1016.3651733398438,anchor="nw",text="y coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(899.2613525390625,1100.867919921875,anchor="nw",text="z coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(793.3386840820312,1204.715087890625,anchor="nw",text="Desired Position:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
-        self.canvas.create_text(899.2613525390625,1290.236083984375,anchor="nw",text="x coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(899.2613525390625,1374.739013671875,anchor="nw",text="y coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(899.2613525390625,1460.260009765625,anchor="nw",text="z coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(967.5676879882812 ,787.2908935546875 ,anchor="nw",text="Positioning",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        self.canvas.create_text(793.3386840820312 ,845.3230590820312 ,anchor="nw",text="Current Position:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        self.canvas.create_text(899.2613525390625 ,930.8441772460938 ,anchor="nw",text="x coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(899.2613525390625 ,1016.3651733398438 ,anchor="nw",text="y coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(899.2613525390625 ,1100.867919921875 ,anchor="nw",text="z coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(793.3386840820312 ,1204.715087890625 ,anchor="nw",text="Desired Position:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        self.canvas.create_text(899.2613525390625 ,1290.236083984375 ,anchor="nw",text="x coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(899.2613525390625 ,1374.739013671875 ,anchor="nw",text="y coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(899.2613525390625 ,1460.260009765625 ,anchor="nw",text="z coordinate",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
 
         #air pressure widget
-        self.canvas.create_text(232.0,140.0,anchor="nw",text="Channel Pressures",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
-        self.canvas.create_text(81.57742309570312,195.77041625976562,anchor="nw",text="Current Pressures:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
-        self.canvas.create_text(186.5096893310547,281.29144287109375,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(186.5096893310547,365.79437255859375,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(186.5096893310547,451.31536865234375,anchor="nw",text="Channel 3",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(186.5096893310547,638.647216796875,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(186.5096893310547,725.1863403320312,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(186.5096893310547,810.7073364257812,anchor="nw",text="Channel 3 ",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
-        self.canvas.create_text(81.57742309570312,556.1624145507812,anchor="nw",text="Desired Pressures:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        self.canvas.create_text(232.0 ,140.0 ,anchor="nw",text="Channel Pressures",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        self.canvas.create_text(81.57742309570312 ,195.77041625976562 ,anchor="nw",text="Current Pressures:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        self.canvas.create_text(186.5096893310547 ,281.29144287109375 ,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547 ,365.79437255859375 ,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547 ,451.31536865234375 ,anchor="nw",text="Channel 3",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547 ,638.647216796875 ,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547 ,725.1863403320312 ,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(186.5096893310547 ,810.7073364257812 ,anchor="nw",text="Channel 3 ",fill="#ffffff",font=("TkDefaultFont", 20 * -1))
+        self.canvas.create_text(81.57742309570312 ,556.1624145507812 ,anchor="nw",text="Desired Pressures:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
         
         #controller type widget
-        self.canvas.create_text(252.0,1043.53613281,anchor="nw",text="Controller Type",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        self.canvas.create_text(252.0 ,1043.53613281 ,anchor="nw",text="Controller Type",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
         
         #Graph titles
-        self.canvas.create_text(1936,40.0,anchor="nw",text="Position Projection ",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
-        self.canvas.create_text(922,40.0,anchor="nw",text="Curvature Visualization",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        self.canvas.create_text(1936 ,40.0 ,anchor="nw",text="Position Projection ",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        self.canvas.create_text(922 ,40.0 ,anchor="nw",text="Curvature Visualization",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
         
         #medtronic logo 
         self.img = Image.open(relative_to_assets("medtronic1.png"))  # PIL solution
         self.img = self.img.resize((690, 121)) #The (250, 250) is (height, width)
         self.img = ImageTk.PhotoImage(self.img) # convert to PhotoImage
-        self.canvas.create_image(40.0, 1310.0, image=self.img, anchor='nw')
+        self.canvas.create_image(40.0 , 1310.0 , image=self.img, anchor='nw')
         
     def buildUI(self):
         #position text
         self.xPosText = ttk.Label(self, text='0.0')
-        self.xPosText.place(relx=1113/2736,rely=928/1839,relwidth=169/2736,relheight=47/1839)
+        self.xPosText.place(relx=1113/2736,rely=928/1824,relwidth=169/2736,relheight=47/1824)
         
         self.yPosText = ttk.Label(self,  text='0.0')
-        self.yPosText.place(relx=1113/2736,rely=1014/1839,relwidth=169/2736,relheight=47/1839)
+        self.yPosText.place(relx=1113/2736,rely=1014/1824,relwidth=169/2736,relheight=47/1824)
         
         self.zPosText = ttk.Label(self,  text='0.0')
-        self.zPosText.place(relx=1113/2736,rely=1099/1839,relwidth=169/2736,relheight=47/1839)
+        self.zPosText.place(relx=1113/2736,rely=1099/1824,relwidth=169/2736,relheight=47/1824)
         
         #position entry boxes
         self.xPosEntry = ttk.Entry(self,state='disabled')
-        self.xPosEntry.place(relx=1113/2736,rely=1288/1839,relwidth=169/2736,relheight=47/1839)
+        self.xPosEntry.place(relx=1113/2736,rely=1288/1824,relwidth=169/2736,relheight=47/1824)
         self.xPosEntry.bind("<Return>", self.handleSetXPositionCommand)
         
         self.yPosEntry = ttk.Entry(self,state='disabled')
-        self.yPosEntry.place(relx=1113/2736,rely=1373/1839,relwidth=169/2736,relheight=47/1839)
-        self.xPosEntry.bind("<Return>", self.handleSetYPositionCommand)
+        self.yPosEntry.place(relx=1113/2736,rely=1373/1824,relwidth=169/2736,relheight=47/1824)
+        self.yPosEntry.bind("<Return>", self.handleSetYPositionCommand)
         
         self.zPosEntry = ttk.Entry(self, state='disabled')
-        self.zPosEntry.place(relx=1113/2736,rely=1460/1839,relwidth=169/2736,relheight=47/1839)
+        self.zPosEntry.place(relx=1113/2736,rely=1460/1824,relwidth=169/2736,relheight=47/1824)
         self.zPosEntry.bind("<Return>", self.handleSetZPositionCommand)
         
         #Pressure text
         self.channel0Text = ttk.Label(self, text='0.0')
-        self.channel0Text.place(relx=402/2736,rely=279/1839,relwidth=169/2736,relheight=47/1839)
+        self.channel0Text.place(relx=402/2736,rely=279/1824,relwidth=169/2736,relheight=47/1824)
         
         self.channel1Text = ttk.Label(self, text='0.0')
-        self.channel1Text.place(relx=402/2736,rely=364/1839,relwidth=169/2736,relheight=47/1839)
+        self.channel1Text.place(relx=402/2736,rely=364/1824,relwidth=169/2736,relheight=47/1824)
         
         self.channel2Text = ttk.Label(self, text='0.0')
-        self.channel2Text.place(relx=402/2736,rely=449/1839,relwidth=169/2736,relheight=47/1839)
+        self.channel2Text.place(relx=402/2736,rely=449/1824,relwidth=169/2736,relheight=47/1824)
         
         #Pressure Entry Boxes
         self.channel0Entry = ttk.Entry(self,state='disabled')
-        self.channel0Entry.place(relx=402/2736,rely=648/1839,relwidth=169/2736,relheight=47/1839)
+        self.channel0Entry.place(relx=402/2736,rely=648/1824,relwidth=169/2736,relheight=47/1824)
         self.channel0Entry.bind("<Return>", self.setChannel0)
         
         self.channel1Entry = ttk.Entry(self,state='disabled')
-        self.channel1Entry.place(relx=402/2736,rely=732/1839,relwidth=169/2736,relheight=47/1839)
+        self.channel1Entry.place(relx=402/2736,rely=732/1824,relwidth=169/2736,relheight=47/1824)
         self.channel1Entry.bind("<Return>", self.setChannel1)
         
         self.channel2Entry = ttk.Entry(self,state='disabled')
-        self.channel2Entry.place(relx=402/2736,rely=818/1839,relwidth=169/2736,relheight=47/1839)
+        self.channel2Entry.place(relx=402/2736,rely=818/1824,relwidth=169/2736,relheight=47/1824)
         self.channel2Entry.bind("<Return>", self.setChannel2)
         
         #Data Logging Buttons
         self.stop = ttk.Button(self, text ="Stop Logging",command=lambda: self.handleLoggingCommand("stop"))
-        self.stop.place(relx=1921/2736,rely=1439/1839,relwidth=314/2736,relheight=97/1839)
+        self.stop.place(relx=1921/2736,rely=1439/1824,relwidth=314/2736,relheight=97/1824)
         
         self.clear = ttk.Button(self, text ="Clear Log File",command=lambda: self.handleLoggingCommand("clear"))
-        self.clear.place(relx=2281/2736, rely=1439/1839,relwidth=314/2736,relheight=97/1839)
+        self.clear.place(relx=2281/2736, rely=1439/1824,relwidth=314/2736,relheight=97/1824)
         
         self.start = ttk.Button(self, text ="Start Logging",command=lambda: lambda: self.handleLoggingCommand("start"))
-        self.start.place(relx=1565/2736,rely=1439/1839,relwidth=314/2736,relheight=97/1839)
+        self.start.place(relx=1565/2736,rely=1439/1824,relwidth=314/2736,relheight=97/1824)
         
         #controller type buttons
         self.open = ttk.Button(self, text ="Open Controller", command=lambda: self.startOpenControl())
-        self.open.place(relx=55/2736,rely=1113/1839,relwidth=314/2736,relheight=97/1839)
+        self.open.place(relx=55/2736,rely=1113/1824,relwidth=314/2736,relheight=97/1824)
         
         self.pid = ttk.Button(self, text ="PI Controller", command=lambda: self.startPidControl())
-        self.pid.place(relx=392/2736,rely=1113/1839,relwidth=314/2736,relheight=97/1839)
+        self.pid.place(relx=392/2736,rely=1113/1824,relwidth=314/2736,relheight=97/1824)
         
         #tye of controller
         self.controllerTypeText = ttk.Label(self, text='No Controller Type Selected')
-        self.controllerTypeText.place(relx=362.0/2736,rely=1230/1839, anchor='n')
+        self.controllerTypeText.place(relx=362.0/2736,rely=1230/1824, anchor='n')
         
         #position projection
         self.projectionWidget = projectPostition(self.canvas)
@@ -443,14 +449,14 @@ class controlWindow(tk.Frame):
         '''
         Handle setting the position from the GUI
         '''
-        newCmd = command("EM_Sensor", "setXPosition", float(self.x_position_entry.get()))
+        newCmd = command("EM_Sensor", "setXPosition", float(self.xPosEntry.get()))
         commandsFromGUI.put(newCmd)
 
     def handleSetYPositionCommand(self, *args):
         '''
         Handle setting the position from the GUI
         '''
-        newCmd = command("EM_Sensor", "setYPosition", float(self.y_position_entry.get()))
+        newCmd = command("EM_Sensor", "setYPosition", float(self.yPosEntry.get()))
         commandsFromGUI.put(newCmd)
         
     def handleSetZPositionCommand(self, *args):
@@ -463,21 +469,21 @@ class controlWindow(tk.Frame):
         '''
         Handle setting the channel in pressure 0
         '''
-        newCmd = command("Arduino", "setPressure", 0, float(self.channel0_entry.get())) # arduino.channel0
+        newCmd = command("Arduino", "setPressure", 0, float(self.channel0Entry.get())) # arduino.channel0
         commandsFromGUI.put(newCmd)
 
     def setChannel1(self, *args):
         '''
         Handle setting the channel in pressure 1
         '''
-        newCmd = command("Arduino", "setPressure", 1, float(self.channel1_entry.get())) # arduino.channel1
+        newCmd = command("Arduino", "setPressure", 1, float(self.channel1Entry.get())) # arduino.channel1
         commandsFromGUI.put(newCmd)
     
     def setChannel2(self, *args):
         '''
         Handle setting the channel in pressure 2
         '''
-        newCmd = command("Arduino", "setPressure", 2, float(self.channel2_entry.get())) # arduino.channel2
+        newCmd = command("Arduino", "setPressure", 2, float(self.channel2Entry.get())) # arduino.channel2
         commandsFromGUI.put(newCmd)        
         
     def handleLoggingCommand(self, status):
@@ -503,7 +509,7 @@ class controlWindow(tk.Frame):
         
         #check if their is an active controller
         if cThread:
-            self.stopPIDControl() #close controller
+            self.stopPidControl() #close controller
         
         #start new controller
         cThread = openControllerThread('Thread 1')
@@ -525,16 +531,17 @@ class controlWindow(tk.Frame):
         
         cThread.raise_exception()
         cThread.join()
+        time.sleep(0.1)
         
     def startPidControl(self):
         global cThread
         
         #check if their is an active controller
         if cThread:
-            self.stopPIDControl() #close controller
+            self.stopOpenControl() #close controller
   
         #start new controller
-        cThread = openControllerThread('Thread 1')
+        cThread = pidControllerThread('Thread 1')
         cThread.start()
         #activate gui
         self.controllerTypeText.configure(text ='PID Controller Type Selected')
@@ -548,11 +555,12 @@ class controlWindow(tk.Frame):
         #disable gui
         self.controllerTypeText.configure(text = 'No Controller Type Selected')
         self.xPosEntry.configure(state="disable")
-        self.xPosEntry.configure(state="disable")
+        self.yPosEntry.configure(state="disable")
         self.zPosEntry.configure(state="disable")
         
         cThread.raise_exception()
-        cThread.join()    
+        cThread.join()   
+        time.sleep(0.1) 
         
 class App:
     def __init__(self, parent):
@@ -581,10 +589,9 @@ class App:
         newCmd = command("Arduino", "setPressure", 0, float(max_pressure[0]) # arduino.channel0
         commandsFromGUI.put(newCmd)
         
-    """
-        
-        
-"""
+    """      
+
+"""      
 class openControllerThread(threading.Thread):
     '''
     Implements proportional controller
@@ -612,38 +619,51 @@ class openControllerThread(threading.Thread):
         main function used in thread to perform 3 channel algorithm
         '''
         global P_des, P_act, r_act, csv_logger
-
+        try:
+            for channel in range(3): 
         for channel in range(3): 
-            if P_des[channel] < 9.0:
-                # lower limit of the pressure we are sending into the controller
-                P_des[channel] = 9.0
-            elif P_des[channel] > 17.0:
-                # higher limit of the pressure we are sending into the controller
-                P_des[channel] = 17.0
+            for channel in range(3): 
+        for channel in range(3): 
+            for channel in range(3): 
+        for channel in range(3): 
+            for channel in range(3): 
+        for channel in range(3): 
+            for channel in range(3): 
+        for channel in range(3): 
+            for channel in range(3): 
+                if P_des[channel] < 9.0:
+                    # lower limit of the pressure we are sending into the controller
+                    P_des[channel] = 9.0
+                elif P_des[channel] > 17.0:
+                    # higher limit of the pressure we are sending into the controller
+                    P_des[channel] = 17.0
 
-        # get the actual pressure from the pressure sensor
-        P_act[0] = arduino.getActualPressure(arduino.channel0)
-        P_act[1] = arduino.getActualPressure(arduino.channel1)
-        P_act[2] = arduino.getActualPressure(arduino.channel2)
+            # get the actual pressure from the pressure sensor
+            P_act[0] = arduino.getActualPressure(arduino.channel0)
+            P_act[1] = arduino.getActualPressure(arduino.channel1)
+            P_act[2] = arduino.getActualPressure(arduino.channel2)
 
-        # get actual position from EM sensor
-        # position = ndi.getPositionInRange()
-        r_act[0] = 0 # position.deltaX          # x dim
-        r_act[1] = 0 # position.deltaY          # y dim
+            # get actual position from EM sensor
+            # position = ndi.getPositionInRange()
+            r_act[0] = 0 # position.deltaX          # x dim
+            r_act[1] = 0 # position.deltaY          # y dim
 
-        # perform 3 channel control algorithm
-        # self.three_channel_algorithm()
+            # perform 3 channel control algorithm
+            # self.three_channel_algorithm()
 
-        # send the desired pressure into Arduino
-        arduino.sendDesiredPressure(arduino.channel0, float(P_des[0]))
-        arduino.sendDesiredPressure(arduino.channel1, float(P_des[1]))
-        arduino.sendDesiredPressure(arduino.channel2, float(P_des[2]))
+            # send the desired pressure into Arduino
+            arduino.sendDesiredPressure(arduino.channel0, float(P_des[0]))
+            arduino.sendDesiredPressure(arduino.channel1, float(P_des[1]))
+            arduino.sendDesiredPressure(arduino.channel2, float(P_des[2]))
 
-        # Log all control variables if needed / TODO: find out how to re-implement time_diff variable
-        # TODO: figure out if logging works with vectors/matrices
-        # logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
-        # if logging.getLogger().getEffectiveLevel() == logging.INFO:
-        #    csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
+            # Log all control variables if needed / TODO: find out how to re-implement time_diff variable
+            # TODO: figure out if logging works with vectors/matrices
+            # logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
+            # if logging.getLogger().getEffectiveLevel() == logging.INFO:
+            #    csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
+        except:
+            print("An exception occurred")
+
 
     def handleGUICommand(self, newCmd):
         '''
@@ -678,8 +698,7 @@ class openControllerThread(threading.Thread):
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
             print('Exception raise failure')
-
-        
+   
 class pidControllerThread(threading.Thread):
     '''
     Implements proportional controller
@@ -769,36 +788,38 @@ class pidControllerThread(threading.Thread):
         main function used in thread to perform 3 channel algorithm
         '''
         global time_diff, r_des, r_act, P_des, P_act, csv_logger, sample_num, z_act
+        try:
+            # get the actual pressure from the pressure sensor
+            P_act[0] = arduino.getActualPressure(arduino.channel0)
+            P_act[1] = arduino.getActualPressure(arduino.channel1)
+            P_act[2] = arduino.getActualPressure(arduino.channel2)
+            # print("P_act", P_act)
 
-        # get the actual pressure from the pressure sensor
-        P_act[0] = arduino.getActualPressure(arduino.channel0)
-        P_act[1] = arduino.getActualPressure(arduino.channel1)
-        P_act[2] = arduino.getActualPressure(arduino.channel2)
-        # print("P_act", P_act)
+            # get actual position from EM sensor
+            position = ndi.getPositionInRange()
+            r_act[1] = position.deltaX          # x dim
+            r_act[0] = position.deltaZ          # y dim
+            z_act = position.deltaZ          # y dim
+            # print("r_act[0]: " + str(r_act[0]) + "r_act[1]: " + str(r_act[1]))
 
-        # get actual position from EM sensor
-        position = ndi.getPositionInRange()
-        r_act[1] = position.deltaX          # x dim
-        r_act[0] = position.deltaZ          # y dim
-        z_act = position.deltaZ          # y dim
-        # print("r_act[0]: " + str(r_act[0]) + "r_act[1]: " + str(r_act[1]))
+            # perform 3 channel control algorithm
+            self.three_channel_algorithm()
 
-        # perform 3 channel control algorithm
-        self.three_channel_algorithm()
+            # send the desired pressure into Arduino
+            self.sendDesiredPressure()
 
-        # send the desired pressure into Arduino
-        self.sendDesiredPressure()
-
-        # Log all control variables if needed / TODO: find out how to re-implement time_diff variable
-        # TODO: figure out if logging works with vectors/matrices
-        logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % \
-            (sample_num, time_diff, r_des[0], r_des[1], r_act[0], r_act[1], P_des[0], P_des[1], P_des[2], P_act[0], P_act[1], P_act[2]))
-        if logging.getLogger().getEffectiveLevel() == logging.INFO:
-            csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % \
+            # Log all control variables if needed / TODO: find out how to re-implement time_diff variable
+            # TODO: figure out if logging works with vectors/matrices
+            logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % \
                 (sample_num, time_diff, r_des[0], r_des[1], r_act[0], r_act[1], P_des[0], P_des[1], P_des[2], P_act[0], P_act[1], P_act[2]))
+            if logging.getLogger().getEffectiveLevel() == logging.INFO:
+                csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % \
+                    (sample_num, time_diff, r_des[0], r_des[1], r_act[0], r_act[1], P_des[0], P_des[1], P_des[2], P_act[0], P_act[1], P_act[2]))
 
-        # update sample number for next data point
-        sample_num = sample_num + 1
+            # update sample number for next data point
+            sample_num = sample_num + 1
+        except:
+            print("An exception occurred")
 
     def three_channel_algorithm(self):
         '''
@@ -942,16 +963,15 @@ class pidControllerThread(threading.Thread):
             print('Exception raise failure')       
 """
 
-
 def main(): 
     #function to calibrate the correct DPI of current computer
-    ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)
     # Designate main thread to GUI
     root = tk.Tk() 
     style = ThemedStyle(root)
     style.set_theme("black")
     App(root)
-    root.resizable(True, True)
+    # root.resizable(True, True)
     root.mainloop()
 
     if cThread: 
