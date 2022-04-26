@@ -1,24 +1,38 @@
-'''
- * @file    three_channel_PI_control.py
- * @author  CU Boulder Medtronic Team 7
- * @brief   Basic 3D proportional and/or PI controller
-'''
-from cmath import cos
-from NDI_Code.NDISensor import NDISensor
-from Py_Arduino_Communication.arduino_control import arduino_control
-import threading
-from queue import Queue
-import ctypes
-import time
-from tkinter import *
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Apr 20 14:52:22 2022
+
+@author: Christopher
+"""
+from pathlib import Path
+import tkinter as tk
 from tkinter import ttk
 from ttkthemes import ThemedStyle
+from math import sin, pi, sqrt, cos
+import ctypes
+import threading
+from queue import Queue
 import logging
 from csv_logger import CsvLogger
-from math import sin, pi, sqrt, cos
+#from NDI_Code.NDISensor import NDISensor
+#from Py_Arduino_Communication.arduino_control import arduino_control
+import numpy as np 
+from PIL import Image,  ImageTk
+import time
 from scipy import signal as sg
 import scipy.optimize as sp_opt
-import numpy as np
+import matplotlib.pyplot as plt
+#from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
+
+OUTPUT_PATH = Path(__file__).parent
+ASSETS_PATH = OUTPUT_PATH / Path("./assets")
+
+"""
+GLOBAL HELPER FUNCTIONS
+"""
+#TODO remove from global memory
+def relative_to_assets(path: str) -> Path:
+    return ASSETS_PATH / Path(path)
 
 logging.basicConfig(filename = 'data.log', level = logging.WARNING, 
     format = '%(asctime)s,%(message)s')
@@ -28,7 +42,6 @@ header = ['date', 'sample_num', 'time_diff', 'z_des', 'x_des', 'z_act', 'x_act',
 csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
                         level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
 sample_num = 0          # variable to keep track of the samples for any data collection
-
 # Init EM Nav and Arduino
 ndi = NDISensor.NDISensor()
 arduino = arduino_control.arduino()
@@ -40,34 +53,23 @@ z_act = 0.0     # actual z_position from EM sensor
 start_time = 0      # start time for the ramp and sinusoid signals
 time_diff = 0       # time difference betweeen the start and current times
 
-# <== 2X Robot Parameters ==>
-k_p = np.array([.04, .04, .04])
-# k_i = np.array([0.01, 0.01, 0.01]) 
-# k_d = np.array([0.001, 0.001, 0.001])
-max_pressure = np.array([16, 16, 16])
-# int_sum = 10, -10
-
-# <== 1X Robot Parameters ==>
-# k_p = np.array([.03, .03, .03])
-# k_i = np.array([0.01, 0.01, 0.01]) 
-# k_d = np.array([0.001, 0.001, 0.001])
-# max_pressure = np.array([15.5, 15.2, 15.5])
-# int_sum = 5, -5
-
 # Parameters for the 3 channel controller
 P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to the Arduino (c0, c1, c2)
 P_act = np.array([0.0, 0.0, 0.0])           # actual pressure read from the pressure sensor (c0, c1, c2)
 r_des = np.array([0.0, 0.0])                # desired position of robot in form (x, y)
-r_act = np.array([0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
-# k_p = np.array([.03, .03, .03])             # 1X Scale - proportional controller gain for c0, c1, c2
+r_act = np.array([0.0, 0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
+k_p = np.array([.04, .04, .04])             # 2X Scale - proportional controller gain for c0, c1, c2
+# k_p = np.array([.01, .01, .01])             # 1X Scale - proportional controller gain for c0, c1, c2
 k_i = np.array([0.01, 0.01, 0.01])          # 2X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+# k_i = np.array([0.0, 0.0, 0.0])          # 1X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+# k_d = np.array([0.001, 0.001, 0.001])          # Test derivative gain (TODO: figure out if this helps tracking)
 k_d = np.array([0.001, 0.001, 0.001])          # Test derivative gain (TODO: figure out if this helps tracking)
 dT = np.array([0.125, 0.125, 0.125])        # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)
 int_sum = np.array([0.0, 0.0, 0.0])         # sum of the integral term # TODO: figure out if this should be a global value
 err_r = np.array([0.0, 0.0])                # error between measured position and actual position
 epsi = np.array([0.0, 0.0, 0.0])            # stores the solution to the force vector algorithm
 epsi_prev = np.array([0.0, 0.0, 0.0])       # modified error in r (after force vector solution) for the previous time step # TODO: figure out if this should be a global value
-# max_pressure = np.array([15.5, 15.2, 15.5])
+max_pressure = np.array([16.5, 16.5, 16.5])
 
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
@@ -79,96 +81,178 @@ class command:
         self.field1 = field1
         self.field2 = field2
 
-class GUI:
-    '''
-    Class for building GUI
-    '''
-    def __init__(self, master):
-        self.master = master
-        master.title('GUI')
-        master.geometry("400x350")
-        master['bg'] = '#474747'
+# a subclass of Canvas for dealing with resizing of windows
+class ResizingCanvas(tk.Canvas):
+    def __init__(self,parent,**kwargs):
+        tk.Canvas.__init__(self, parent,**kwargs)
+        self.bind("<Configure>", self.on_resize)
+        self.height = self.winfo_reqheight()
+        self.width = self.winfo_reqwidth()
 
-        # <=== ROW 0 ===>
-        command_label = ttk.Label(master, text = "Send Commands")
-        command_label.grid(row = 0, column = 0, sticky = W, pady = 2, padx = (2,0))
+    def on_resize(self,event):
+        # determine the ratio of old width/height to new width/height
+        wscale = float(event.width)/self.width
+        hscale = float(event.height)/self.height
+        self.width = event.width
+        self.height = event.height
+        # resize the canvas 
+        self.config(width=self.width, height=self.height)
+        # rescale all the objects tagged with the "all" tag
+        self.scale("all",0,0,wscale,hscale)
 
-        # <=== ROW 1 ===>
-        # Text label for position entry
-        x_position_label = ttk.Label(master, text = "Enter desired X [mm]:")
-        x_position_label.grid(row = 1, column = 0, sticky = W, pady = 2, padx = (30,0))
-        # Entry widget for position
-        self.x_position_entry= ttk.Entry(master, width= 10)
-        self.x_position_entry.grid(row = 1, column = 1, sticky = W, pady = 2)
-        self.x_position_entry.bind("<Return>", self.GUI_handleSetXPositionCommand)
+class shalomWindow(tk.Frame):
+    def __init__(self, parent, *args, **kwargs):
+        tk.Frame.__init__(self, parent, *args, **kwargs)
+        
+        self.image  = Image.open(relative_to_assets("shalom.png"))
+        self.img_copy= self.image.copy()
 
-        # <=== ROW 2 ===>
-        y_position_label = ttk.Label(master, text = "Enter desired Y [mm]:")
-        y_position_label.grid(row = 2, column = 0, sticky = W, pady = 2, padx = (30,0))
-        # Entry widget for positionx_position_label
-        self.y_position_entry= ttk.Entry(master, width= 10)
-        self.y_position_entry.grid(row = 2, column = 1, sticky = W, pady = 2)
-        self.y_position_entry.bind("<Return>", self.GUI_handleSetYPositionCommand)
 
-        # <=== ROW 3 ===>
-        # Text label for proportional gain entry
-        kp_label = ttk.Label(master, text = "Enter kp:")
-        kp_label.grid(row = 3, column = 0, sticky = W, pady = 2, padx = (30,0))
-        #Create an Entry widget to accept User Input
-        self.kp_entry = ttk.Entry(master, width= 10)
-        self.kp_entry.grid(row = 3, column = 1, sticky = W, pady = 2)
-        self.kp_entry.bind("<Return>", self.GUI_handleSetKpCommand)
+        self.background_image = ImageTk.PhotoImage(self.image)
 
-        # <=== ROW 4 ===>
-        # Text label for integral gain entry
-        ki_label = ttk.Label(master, text = "Enter ki:")
-        ki_label.grid(row = 4, column = 0, sticky = W, pady = 2, padx = (30,0))
-        #Create an Entry widget to accept User Input
-        self.ki_entry = ttk.Entry(master, width= 10)
-        self.ki_entry.grid(row = 4, column = 1, sticky = W, pady = 2)
-        self.ki_entry.bind("<Return>", self.GUI_handleSetKiCommand)
+        self.background = tk.Label(self, image=self.background_image)
+        self.background.pack(expand=True, fill='both',)
+        self.background.bind('<Configure>', self._resize_image)
+        
+    def _resize_image(self,event):
 
-        # <=== ROW 5 ===>
-        # Text label for derivative gain entry
-        kd_label = ttk.Label(master, text = "Enter kd:")
-        kd_label.grid(row = 5, column = 0, sticky = W, pady = 2, padx = (30,0))
-        #Create an Entry widget to accept User Input
-        self.kd_entry = ttk.Entry(master, width= 10)
-        self.kd_entry.grid(row = 5, column = 1, sticky = W, pady = 2)
-        self.kd_entry.bind("<Return>", self.GUI_handleSetKdCommand)
+        new_width = event.width
+        new_height = event.height
 
-        # Diplaying data
-        display_label = ttk.Label(master, text = "Press/hold enter to display")
-        display_label.grid(row = 6, column = 0, sticky = W, pady = (20,2), padx = (2,0))
-        self.display_entry = ttk.Entry(master, width= 1)
-        self.display_entry.grid(row = 6, column = 1, sticky = W, pady = (20,2))
-        self.display_entry.bind("<Return>", self.GUI_handleDataDisplay)
+        self.image = self.img_copy.resize((new_width, new_height))
 
-        self.x_des_label = ttk.Label(master, text = "X desired: ")
-        self.x_des_label.grid(row = 7, column = 0, sticky = W, pady = 2, padx = (30,0))
+        self.background_image = ImageTk.PhotoImage(self.image)
+        self.background.configure(image =  self.background_image)
+        
+class controlWindow(tk.Frame):
+    def __init__(self, parent, *args, **kwargs):
+        self.frame = tk.Frame.__init__(self, parent, *args, **kwargs)
+        self.parent = parent
+        self.width, self.height = parent.winfo_screenwidth(), parent.winfo_screenheight()
+        self.canvas = ResizingCanvas(
+            self, 
+            bg = "#626262", 
+            height = self.height,
+            width = self.width,
+            bd = 0,
+            highlightthickness = 0,
+            borderwidth=2,
+            relief = "raised")
+        self.canvas.pack(expand = 1, fill ="both")
+        self.buildUX()
+        self.buildUI()
+        self.GUI_handleDataDisplay()
+        
+    def buildUX(self):        
+        """
+        UX Rectangle: making pretty but unnecessary rectangles
+        """
+        #TODO label what each rectangle represents, we can do this by changing the color of each and see what happens
+        self.canvas.create_rectangle(1464.5130615234375, 1278.018798828125, 2694.99951171875, 1639.447021484375, width=1, fill="#424242", outline="black")
+        self.canvas.create_rectangle(40.0,116.35806274414062, 721.0739135742188, 989.8941955566406, width=1, fill="#424242", outline="black")
+        self.canvas.create_rectangle(750.7725219726562, 767.9468383789062, 1431.846435546875, 1639.44677734375, width=1, fill="#424242", outline="black")
 
-        self.x_act_label = ttk.Label(master, text = "X actual: ")
-        self.x_act_label.grid(row = 8, column = 0, sticky = W, pady = 2, padx = (30,0))
+        """
+        UX Text: defining text that remains constant
+        """
+        #data loggin widget
+        self.canvas.create_text(1953.540283203125,1315.688720703125,anchor="nw",text="Data Recording",fill="#ffffff", font=("TkDefaultFont", 32 * -1))
+        
+        #position widget
+        self.canvas.create_text(967.5676879882812,787.2908935546875,anchor="nw",text="Positioning",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        self.canvas.create_text(793.3386840820312,845.3230590820312,anchor="nw",text="Current Position:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        self.canvas.create_text(899.2613525390625,930.8441772460938,anchor="nw",text="x coordinate",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
+        self.canvas.create_text(899.2613525390625,1016.3651733398438,anchor="nw",text="y coordinate",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
+        self.canvas.create_text(899.2613525390625,1100.867919921875,anchor="nw",text="z coordinate",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
+        self.canvas.create_text(793.3386840820312,1204.715087890625,anchor="nw",text="Desired Position:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        self.canvas.create_text(899.2613525390625,1290.236083984375,anchor="nw",text="x coordinate",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
+        self.canvas.create_text(899.2613525390625,1374.739013671875,anchor="nw",text="y coordinate",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
+        self.canvas.create_text(899.2613525390625,1460.260009765625,anchor="nw",text="z coordinate",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
 
-        self.y_des_label = ttk.Label(master, text = "Z desired: ")
-        self.y_des_label.grid(row = 9, column = 0, sticky = W, pady = 2, padx = (30,0))
+        #air pressure widget
+        self.canvas.create_text(232.0,140.0,anchor="nw",text="Channel Pressures",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        self.canvas.create_text(81.57742309570312,195.77041625976562,anchor="nw",text="Current Pressures:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        self.canvas.create_text(186.5096893310547,281.29144287109375,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
+        self.canvas.create_text(186.5096893310547,365.79437255859375,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
+        self.canvas.create_text(186.5096893310547,451.31536865234375,anchor="nw",text="Channel 3",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
+        self.canvas.create_text(186.5096893310547,638.647216796875,anchor="nw",text="Channel 1",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
+        self.canvas.create_text(186.5096893310547,725.1863403320312,anchor="nw",text="Channel 2",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
+        self.canvas.create_text(186.5096893310547,810.7073364257812,anchor="nw",text="Channel 3 ",fill="#ffffff",font=("TkDefaultFont", 25 * -1))
+        self.canvas.create_text(81.57742309570312,556.1624145507812,anchor="nw",text="Desired Pressures:",fill="#ffffff",font=("TkDefaultFont", 24 * -1))
+        
+        #Graph titles
+        self.canvas.create_text(1936,40.0,anchor="nw",text="Position Projection ",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        self.canvas.create_text(922,40.0,anchor="nw",text="Curvature Visualization",fill="#ffffff",font=("TkDefaultFont", 32 * -1))
+        
+    def buildUI(self):
 
-        self.y_act_label = ttk.Label(master, text = "Z actual: ")
-        self.y_act_label.grid(row = 10, column = 0, sticky = W, pady = 2, padx = (30,0))
+        #position text
+        self.xPosText = ttk.Label(self,text ='0.0')
+        self.xPosText.place(relx=1113/2736,rely=928/1839,relwidth=169/2736,relheight=47/1839)
+        
+        self.yPosText = ttk.Label(self, text='0.0')
+        self.yPosText.place(relx=1113/2736,rely=1014/1839,relwidth=169/2736,relheight=47/1839)
+        
+        self.zPosText = ttk.Label(self, text='0.0')
+        self.zPosText.place(relx=1113/2736,rely=1099/1839,relwidth=169/2736,relheight=47/1839)
+        
+        #position entry boxes
+        self.xPosEntry = ttk.Entry(self)
+        self.xPosEntry.place(relx=1113/2736,rely=1288/1839,relwidth=169/2736,relheight=47/1839)
+        self.xPosEntry.bind("<Return>", self.GUI_handleSetXPositionCommand)
+        
+        self.yPosEntry = ttk.Entry(self)
+        self.yPosEntry.place(relx=1113/2736,rely=1373/1839,relwidth=169/2736,relheight=47/1839)
+        self.xPosEntry.bind("<Return>", self.GUI_handleSetYPositionCommand)
+        
+        self.zPosEntry = ttk.Entry(self, state='disabled')
+        self.zPosEntry.place(relx=1113/2736,rely=1460/1839,relwidth=169/2736,relheight=47/1839)
+        self.xPosEntry.bind("<Return>", self.GUI_handleSetZPositionCommand)
+        
+        #Pressure text
+        self.channel0Text = ttk.Label(self)
+        self.channel0Text.place(relx=402/2736,rely=279/1839,relwidth=169/2736,relheight=47/1839)
+        
+        self.channel1Text = ttk.Label(self)
+        self.channel0Text.place(relx=402/2736,rely=364/1839,relwidth=169/2736,relheight=47/1839)
+        
+        self.channel2Text = ttk.Label(self)
+        self.channel2Text.place(relx=402/2736,rely=449/1839,relwidth=169/2736,relheight=47/1839)
+        
+        #Pressure Entry Boxes
+        self.channel0Entry = ttk.Entry(self)
+        self.channel0Entry.place(relx=402/2736,rely=648/1839,relwidth=169/2736,relheight=47/1839)
+        
+        self.channel1Entry = ttk.Entry(self)
+        self.channel1Entry.place(relx=402/2736,rely=732/1839,relwidth=169/2736,relheight=47/1839)
+        
+        self.channel2Entry = ttk.Entry(self)
+        self.channel2Entry.place(relx=402/2736,rely=818/1839,relwidth=169/2736,relheight=47/1839)
+        
+        """
+        Logging Buttons
+        """
+        self.stop = ttk.Button(self, text ="Stop Logging",command=lambda: self.GUI_handleLoggingCommand("stop"))
+        self.stop.place(relx=1921/2736,rely=1439/1839,relwidth=314/2736,relheight=97/1839)
+        
+        self.clear = ttk.Button(self, text ="Clear Log File",command=lambda: self.GUI_handleLoggingCommand("clear"))
+        self.clear.place(relx=2281/2736, rely=1439/1839,relwidth=314/2736,relheight=97/1839)
+        
+        self.start = ttk.Button(self, text ="Start Logging",command=lambda: lambda: self.GUI_handleLoggingCommand("start"))
+        self.start.place(relx=1565/2736,rely=1439/1839,relwidth=314/2736,relheight=97/1839)
+        
+        
+    def GUI_handleDataDisplay(self, *args):
+        global r_des, r_act, y_des, y_act, int_sum
 
-        # Record data
-        command_label = ttk.Label(master, text = "Data Recording")
-        command_label.grid(row = 11, column = 0, sticky = W, pady = (20,2), padx = (2,0))
+        self.xPosText.configure(text = str(round(r_act[1],3)))
+        self.zPosText.configure(text = str(round(r_act[0],3)))
+        self.yPosText.configure(text = str(round(r_act[2],3)))
 
-        start_log_button = ttk.Button(master, text = "Start Logging", width = 12, command = lambda: self.GUI_handleLoggingCommand("start"))
-        start_log_button.grid(row = 12, column = 0, sticky = W, pady = 2, padx = (2,0))
 
-        stop_log_button = ttk.Button(master, text = "Stop Logging", width = 12, command = lambda: self.GUI_handleLoggingCommand("stop"))
-        stop_log_button.grid(row = 12, column = 1, sticky = W, pady = 2, padx = (2,0))
-
-        clear_log_button = ttk.Button(master, text = "Clear Log File", width = 12, command = lambda: self.GUI_handleLoggingCommand("clear"))
-        clear_log_button.grid(row = 12, column = 2, sticky = W, pady = 2, padx = (50,0))
-
+        # call again after 100 ms
+        self.parent.after(100, self.GUI_handleDataDisplay)
+    
     def GUI_handleSetXPositionCommand(self, *args):
         '''
         Handle setting the position from the GUI
@@ -182,40 +266,13 @@ class GUI:
         '''
         newCmd = command("EM_Sensor", "setYPosition", float(self.y_position_entry.get()))
         commandsFromGUI.put(newCmd)
-
-    def GUI_handleSetKpCommand(self, *args):
+        
+    def GUI_handleSetZPositionCommand(self, *args):
         '''
-        Handle setting the gain from the GUI
+        Handle setting the position from the GUI
         '''
-        newCmd = command("EM_Sensor", "setKp", float(self.kp_entry.get()))
-        commandsFromGUI.put(newCmd)
-
-    def GUI_handleSetKiCommand(self, *args):
-        '''
-        Handle setting the gain from the GUI
-        '''
-        newCmd = command("EM_Sensor", "setKi", float(self.ki_entry.get()))
-        commandsFromGUI.put(newCmd)
-
-    def GUI_handleSetKdCommand(self, *args):
-        '''
-        Handle setting the gain from the GUI
-        '''
-        newCmd = command("EM_Sensor", "setKd", float(self.kd_entry.get()))
-        commandsFromGUI.put(newCmd)
-
-    def GUI_handleDataDisplay(self, *args):
-        '''
-        Display control algorithm parameters to the GUI
-        '''
-        global r_des, r_act, y_des, y_act, int_sum
-
-        self.x_des_label.configure(text = "X desired: " + str(round(r_des[1],3)))
-        self.x_act_label.configure(text = "X actual: " + str(round(r_act[1],3)))
-        self.y_des_label.configure(text = "Z desired: " + str(round(r_des[0],3)))
-        self.y_act_label.configure(text = "Z actual: " + str(round(r_act[0],3)))
-        # self.int_sum_label.configure(text = "int_sum: " + str(round(int_sum,3)))
-
+        print('error z entry box not disabled')
+        
     def GUI_handleLoggingCommand(self, status):
         '''
         Start logging
@@ -234,7 +291,26 @@ class GUI:
             with open('data.log', 'w'):
                 pass
 
-
+class App:
+    def __init__(self, parent):
+        #parent window setup 
+        self.width, self.height = parent.winfo_screenwidth(), parent.winfo_screenheight()
+        parent.geometry('%dx%d' % (self.width, self.height))   
+        parent.title('GUI')
+        self.parent = parent
+        # create a navagiation bar
+        self.navbar = ttk.Notebook(self.parent)
+        self.controlFrame = controlWindow(self.navbar)
+        self.shalomFrame = shalomWindow(self.navbar) 
+        
+        self.navbar.pack(expand = 1, fill ="both")
+        self.controlFrame.pack(expand = 1, fill ="both")
+        self.shalomFrame.pack(expand = 1, fill ="both")
+        
+        self.navbar.add(self.controlFrame, text='Controls')
+        self.navbar.add(self.shalomFrame, text='Shalom')
+        
+        
 class controllerThread(threading.Thread):
     '''
     Implements proportional controller
@@ -402,6 +478,7 @@ class controllerThread(threading.Thread):
         position = ndi.getPositionInRange()
         r_act[1] = position.deltaX          # x dim
         r_act[0] = position.deltaZ          # y dim
+        r_act[2] = position.deltay         # y dim
         # print("r_act[0]: " + str(r_act[0]) + "r_act[1]: " + str(r_act[1]))
 
         # perform 3 channel control algorithm
@@ -562,26 +639,17 @@ class controllerThread(threading.Thread):
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
             print('Exception raise failure')
 
-
-def main():
-    '''
-    Starting point for script
-    '''
-
-    # Spin up controller thread
-    cThread = controllerThread('Thread 1')
-    cThread.start()
-
+            
+def main(): 
+    #function to calibrate the correct DPI of current computer
+    ctypes.windll.shcore.SetProcessDpiAwareness(1)
     # Designate main thread to GUI
-    root = Tk()
+    root = tk.Tk() 
     style = ThemedStyle(root)
-    style.set_theme("equilux")
-    GUI(root)
+    style.set_theme("black")
+    App(root)
+    root.resizable(True, True)
     root.mainloop()
 
-    # Kill controller once GUI is exited
-    cThread.raise_exception()
-    cThread.join()
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
