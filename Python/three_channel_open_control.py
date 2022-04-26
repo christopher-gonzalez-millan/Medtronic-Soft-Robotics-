@@ -1,7 +1,8 @@
 '''
- * @file    one_channel_PI_control.py
+ * @file    three_channel_open_control.py
  * @author  CU Boulder Medtronic Team 7
- * @brief   Basic 1D proportional controller
+ * @brief   This script allows for open loop control of
+            a 3 channel robot (i.e manually controlling pressures)
 '''
 from NDI_Code.NDISensor import NDISensor
 from Py_Arduino_Communication.arduino_control import arduino_control

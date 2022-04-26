@@ -2,6 +2,7 @@
  * @file    one_channel_PI_control.py
  * @author  CU Boulder Medtronic Team 7
  * @brief   Basic 1D proportional controller
+            for one channel robots only
 '''
 from NDI_Code.NDISensor import NDISensor
 from Py_Arduino_Communication.arduino_control import arduino_control
@@ -17,10 +18,9 @@ from csv_logger import CsvLogger
 from math import sin, pi
 from scipy import signal as sg
 
+# Data Collection
 logging.basicConfig(filename = 'data.log', level = logging.WARNING, 
     format = '%(asctime)s,%(message)s')
-
-# create csv logging object to store the data collected
 header = ['date', 'time_diff', 'z_des', 'z_act', 'P_des', 'P_act', 'k_p', 'k_i']
 csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
                         level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
@@ -31,23 +31,27 @@ arduino = arduino_control.arduino()
 arduino.selectChannels(arduino.ON, arduino.OFF, arduino.OFF)
 
 # Parameters for controller
-z_des = 40.0     # stores the desired z position input by user
-z_act = 0.0     # actual z_position from EM sensor
-k_p = .012       # proportional controller gain
-P_act = 0.0     # actual pressure read from the pressure sensor
-P_des = 12.0    # desired pressure we're sending to the Arduino
-dT = 0.125      # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value
-int_sum = 0.0    # sum of the integral term # TODO: figure out if this should be a global value
-epsi_z_prev = 0.0 # error in z for the previous time step # TODO: figure out if this should be a global value
-k_i = 0.012         # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
+z_des = 40.0        # stores the desired z position input by user
+z_act = 0.0         # actual z_position from EM sensor
+k_p = .012          # proportional controller gain
+P_act = 0.0         # actual pressure read from the pressure sensor
+P_des = 12.0        # desired pressure we're sending to the Arduino
+dT = 0.125          # time between cycles (seconds)
+int_sum = 0.0       # sum of the integral term
+epsi_z_prev = 0.0   # error in z for the previous time step
+k_i = 0.012         # integral gain
 start_time = 0      # start time for the ramp and sinusoid signals
 time_diff = 0       # time difference betweeen the start and current times
 
-# Queue for inter-thread communication
+# Queue for inter-thread communication (between GUI thread and controller thread)
 commandsFromGUI = Queue()
 
 # Class used for all commands
 class command:
+    '''
+    Basic command format to be used in the queue. We pass along
+    id's and any other important info in field1 and field2
+    ''' 
     def __init__(self, id, field1, field2):
         self.id = id
         self.field1 = field1
@@ -195,7 +199,6 @@ class GUI:
             with open('data.log', 'w'):
                 pass
 
-
 class controllerThread(threading.Thread):
     '''
     Implements proportional controller
@@ -205,6 +208,10 @@ class controllerThread(threading.Thread):
         self.name = name
 
     def run(self):
+        '''
+        Infinite loop for controller until turned off.
+        Continues to look for new commands from the GUI.
+        '''
         try:
             while True:
                 # Look for new commands
@@ -235,6 +242,9 @@ class controllerThread(threading.Thread):
         z_des = A*sin(2*pi*f*time_diff) + C      # resulting sinusoidal z_des [mm]
 
     def ramp_signal(self):
+        '''
+        Ramp input function with regard to position for the 1D channel
+        '''
         global start_time, z_des, time_diff
 
         current_time = time.time()              # current time measured compared to start time
@@ -277,25 +287,29 @@ class controllerThread(threading.Thread):
         '''
         global z_des, z_act, P_des, P_act, k_p, dT, int_sum, epsi_z_prev, k_i, start_time
 
+        # If user has started logging, start the ramp signal. You could
+        # also run the sinusoid here if you would like.
         if start_time > 0:
-            # self.ramp_signal()
-            self.sinusoid_signal()
+            self.ramp_signal()
+            # self.sinusoid_signal()
 
         # Calculate the error between current and desired positions
         epsi_z = z_des - z_act
 
-        # Calculate the integral sum
+        # Calculate the integral sum and cap it to prevent windup
         int_sum = int_sum + 0.5*(epsi_z + epsi_z_prev)*dT
         if int_sum > 3:
             int_sum = 3
         elif int_sum < -3:
             int_sum = -3
 
+        # We have several ideas implemented here. We found our delta pressure
+        # controller to be the best performing of all of them. We think this is due
+        # to the slow response time of our controller
+
         # < -------- Shalom P_absolute method --------- >
         # Utilize the proportional and integral controller values for P_des
         # P_des = k_p*epsi_z + k_i*int_sum
-
-        # logging.debug("P_des: ", self.P_des)
 
         # < ------- Our feedback method --------- >
         del_P_des = k_p * epsi_z + k_i*(int_sum)
@@ -307,10 +321,6 @@ class controllerThread(threading.Thread):
         # P_des = P_o + del_P_des
         # del_P_act = P_des - P_act
 
-        # Check for windup of the integrator
-        # if (P_des >= 13.25) or (P_des <= 9.0):
-        #     P_des = k_p*epsi_z
-
         # Update the error value for next iteration of epsi_z_prev
         epsi_z_prev = epsi_z
 
@@ -319,6 +329,8 @@ class controllerThread(threading.Thread):
         convert P_des and send this pressure into the Arduino
         '''
         global P_des
+        # Safety check so we don't the arduino a super high or low pressure!
+        # it will blow up if you have the wrong bounds
         if P_des < 9.0:
             # lower limit of the pressure we are sending into the controller
             P_des = 9.0

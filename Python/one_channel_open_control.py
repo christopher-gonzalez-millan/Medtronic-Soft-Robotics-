@@ -3,6 +3,7 @@
  * @author  CU Boulder Medtronic Team 7
  * @brief   Integrates Arduino with EM sensor in one python script.
             Provides GUI with simple commands like read pressure, write pressure, and read position
+            for one channel robots only
 '''
 from NDISensor import NDISensor
 from arduino_control import arduino_control
@@ -21,8 +22,11 @@ arduino = arduino_control.arduino()
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
 
-# Class used for all commands
 class command:
+    '''
+    Basic command format to be used in the queue. We pass along
+    id's and any other important info in field1 and field2
+    ''' 
     def __init__(self, id, field1, field2):
         self.id = id
         self.field1 = field1
@@ -35,8 +39,10 @@ root.geometry("400x300")
 root.title('GUI')
 root['bg'] = '#0059b3'
 
-# Handling Arduino related commands from GUI
 def GUI_handleArduinoCommand():
+    '''
+    Handling Arduino related commands from GUI
+    '''
     global arduino_entry
     newCmd = command("Arduino", float(arduino_entry.get()), 0)
     commandsFromGUI.put(newCmd)
@@ -46,7 +52,7 @@ labelText.set("Enter desired pressure [psi]:")
 labelDir=Label(root, textvariable=labelText, height=1)
 labelDir.pack()
 
-#Create an Entry widget to accept User Input
+# Create an Entry widget to accept User Input
 arduino_entry= Entry(root, width= 20)
 arduino_entry.focus_set()
 arduino_entry.pack()
@@ -68,7 +74,7 @@ ttk.Button(root, text= "Read Position from EM Sensor",width= 30, command=GUI_han
 
 class controllerThread(threading.Thread):
     '''
-    Implements proportional controller
+    Implements open controller for 1D control
     '''
     def __init__(self, name):
         threading.Thread.__init__(self)
@@ -82,7 +88,7 @@ class controllerThread(threading.Thread):
         if (newCmd.id == "Arduino"):
             global ser
             if (newCmd.field1 == "read"):
-                P_act = 0 # arduino.getActualPressure()
+                P_act = arduino.getActualPressure()
                 print("Current Pressure: ", P_act)
             else:
                 P_des = newCmd.field1
@@ -107,7 +113,9 @@ class controllerThread(threading.Thread):
                     break
 
     def run(self):
-        # target function of the thread class
+        '''
+        target function of the thread class
+        '''
         try:
             while True:
                 if (commandsFromGUI.empty() == False):

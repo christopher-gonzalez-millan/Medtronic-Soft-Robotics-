@@ -1,7 +1,8 @@
 '''
  * @file    three_channel_PI_control.py
  * @author  CU Boulder Medtronic Team 7
- * @brief   Basic 3D proportional and/or PI controller
+ * @brief   Basic 2D proportional and/or PID controller
+            used for 3 channel robots
 '''
 from cmath import cos
 from NDI_Code.NDISensor import NDISensor
