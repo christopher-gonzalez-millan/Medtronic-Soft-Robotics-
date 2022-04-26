@@ -14,8 +14,8 @@ import threading
 from queue import Queue
 import logging
 from csv_logger import CsvLogger
-# from NDI_Code.NDISensor import NDISensor
-# from Py_Arduino_Communication.arduino_control import arduino_control
+from NDI_Code.NDISensor import NDISensor
+from Py_Arduino_Communication.arduino_control import arduino_control
 import numpy as np 
 from PIL import Image,  ImageTk
 import time
@@ -43,9 +43,9 @@ csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
                         level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
 sample_num = 0          # variable to keep track of the samples for any data collection
 # Init EM Nav and Arduino
-# ndi = NDISensor.NDISensor()
-# arduino = arduino_control.arduino()
-# arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
+ndi = NDISensor.NDISensor()
+arduino = arduino_control.arduino()
+arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
 
 # Parameters for controller
 z_des = 40.0     # stores the desired z position input by user
@@ -92,7 +92,7 @@ class command:
 class projectPostition:
     def __init__(self, parent):
         self.parent = parent
-        self.center, self.radius = self.defineCircle((0,1), (1,0), (0,-1))
+        self.center, self.radius = self.defineCircle((0,50), (50,0), (0,-50))
         self.x = 0
         self.y = 0
         self.buildProjectionWidget()
@@ -116,8 +116,8 @@ class projectPostition:
         
     def plot(self):
         self.axes.clear()
-        self.axes.set_xlim(-1.2, 1.2) #TODO update to gloabl max
-        self.axes.set_ylim(-1.2, 1.2)
+        self.axes.set_xlim(-50.2, 50.2) #TODO update to gloabl max
+        self.axes.set_ylim(-50.2, 50.2)
         plt.plot(self.x, self.y, 'ro', linewidth = 5) 
         cc = plt.Circle(self.center, self.radius, fill=False)
         plt.grid(True)
@@ -591,7 +591,7 @@ class App:
         
     """      
 
-"""      
+      
 class openControllerThread(threading.Thread):
     '''
     Implements proportional controller
@@ -620,16 +620,6 @@ class openControllerThread(threading.Thread):
         '''
         global P_des, P_act, r_act, csv_logger
         try:
-            for channel in range(3): 
-        for channel in range(3): 
-            for channel in range(3): 
-        for channel in range(3): 
-            for channel in range(3): 
-        for channel in range(3): 
-            for channel in range(3): 
-        for channel in range(3): 
-            for channel in range(3): 
-        for channel in range(3): 
             for channel in range(3): 
                 if P_des[channel] < 9.0:
                     # lower limit of the pressure we are sending into the controller
@@ -961,7 +951,7 @@ class pidControllerThread(threading.Thread):
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
             print('Exception raise failure')       
-"""
+
 
 def main(): 
     #function to calibrate the correct DPI of current computer
