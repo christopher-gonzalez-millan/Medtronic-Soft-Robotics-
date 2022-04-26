@@ -53,7 +53,7 @@ void scanner()
     }   
     Serial.println("\nFinished scanning mux ports\n");
     Serial.println("------------------------------------------------------");
-    delay(5000);
+    delay(500);
 }
 
 /*
@@ -94,7 +94,7 @@ void sensor_initialization()
     
     Serial.println("Initialized Sensor 2\n");
     Serial.println("------------------------------------------------------");
-    delay(5000);
+    delay(500);
 }
 
 /*
