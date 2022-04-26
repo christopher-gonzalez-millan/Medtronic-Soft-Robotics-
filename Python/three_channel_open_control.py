@@ -23,28 +23,21 @@ logging.basicConfig(filename = 'data.log', level = logging.WARNING,
     format = '%(asctime)s,%(message)s')
 
 
-# Init EM Nav and Arduino
-# ndi = NDISensor.NDISensor()
+# Init Arduino
 arduino = arduino_control.arduino()
 arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
 
 P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to the Arduino (c0, c1, c2)
 P_act = np.array([0.0, 0.0, 0.0])           # actual pressure read from the pressure sensor (c0, c1, c2)
-r_des = np.array([0.0, 0.0])                # desired position of robot in form (x, y)
-r_act = np.array([0.0, 0.0])                # actual position of the robot using EM sensor (x, y)
-k_p = np.array([.012, .012, .012])          # proportional controller gain for c0, c1, c2
-k_i = np.array([.012, .012, .012])          # integral gain # TODO: figure out how to pass in integral gain and what is best gain value
-dT = np.array([0.125, 0.125, 0.125])        # time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)
-int_sum = np.array([0.0, 0.0, 0.0])         # sum of the integral term # TODO: figure out if this should be a global value
-err_r = np.array([0.0, 0.0])                # error between measured position and actual position
-epsi = np.array([0.0, 0.0, 0.0])            # stores the solution to the force vector algorithm
-epsi_prev = np.array([0.0, 0.0, 0.0])       # modified error in r (after force vector solution) for the previous time step # TODO: figure out if this should be a global value
 
-# Queue for inter-thread communication
+# Queue for inter-thread communication (between GUI thread and controller thread)
 commandsFromGUI = Queue()
 
-# Class used for all commands
 class command:
+    '''
+    Basic command format to be used in the queue. We pass along
+    id's and any other important info in field1 and field2
+    '''
     def __init__(self, id, field1, field2, field3):
         self.id = id
         self.field1 = field1
@@ -151,8 +144,6 @@ class GUI:
         self.p_act_0_label.configure(text = "P0: " + str(round(P_act[0],3)))
         self.p_act_1_label.configure(text = "P1: " + str(round(P_act[1],3)))
         self.p_act_2_label.configure(text = "P2: " + str(round(P_act[2],3)))
-        # self.p_act_label.configure(text = "P actual: " + str(round(P_act,3)))
-        # self.int_sum_label.configure(text = "int_sum: " + str(round(int_sum,3)))
 
     def GUI_handleLoggingCommand(self, status):
         '''
@@ -173,13 +164,19 @@ class GUI:
 
 class controllerThread(threading.Thread):
     '''
-    Implements proportional controller
+    This thread is where the main controller is run
+    for the open controller 
     '''
     def __init__(self, name):
         threading.Thread.__init__(self)
         self.name = name
 
     def run(self):
+        '''
+        Infinite loop for controller until turned off.
+        Continues to look for new commands from the GUI.
+        and runs the three channel main.
+        '''
         try:
             while True:
                 # Look for new commands
@@ -188,6 +185,9 @@ class controllerThread(threading.Thread):
                     self.handleGUICommand(newCmd)
 
                 self.three_channel_main()
+                # Slow down controller so we give the arduino some
+                # time to relax. Don't want to be sending serial commands
+                # every loop the arduino executes
                 time.sleep(.07)
 
         finally:
@@ -195,10 +195,12 @@ class controllerThread(threading.Thread):
 
     def three_channel_main(self):
         '''
-        main function used in thread to perform 3 channel algorithm
+        main function used in thread to perform 3 channel control
         '''
         global P_des, P_act, r_act, csv_logger
 
+        # Safety check so we don't the arduino a super high or low pressure!
+        # it will blow up if you have the wrong bounds
         for channel in range(3): 
             if P_des[channel] < 9.0:
                 # lower limit of the pressure we are sending into the controller
@@ -212,24 +214,10 @@ class controllerThread(threading.Thread):
         P_act[1] = arduino.getActualPressure(arduino.channel1)
         P_act[2] = arduino.getActualPressure(arduino.channel2)
 
-        # get actual position from EM sensor
-        # position = ndi.getPositionInRange()
-        r_act[0] = 0 # position.deltaX          # x dim
-        r_act[1] = 0 # position.deltaY          # y dim
-
-        # perform 3 channel control algorithm
-        # self.three_channel_algorithm()
-
         # send the desired pressure into Arduino
         arduino.sendDesiredPressure(arduino.channel0, float(P_des[0]))
         arduino.sendDesiredPressure(arduino.channel1, float(P_des[1]))
         arduino.sendDesiredPressure(arduino.channel2, float(P_des[2]))
-
-        # Log all control variables if needed / TODO: find out how to re-implement time_diff variable
-        # TODO: figure out if logging works with vectors/matrices
-        # logging.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
-        # if logging.getLogger().getEffectiveLevel() == logging.INFO:
-        #    csv_logger.info('%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (r_des, r_act, P_des, P_act, k_p, k_i))
 
     def handleGUICommand(self, newCmd):
         '''
@@ -241,8 +229,6 @@ class controllerThread(threading.Thread):
         if (newCmd.id == "Arduino"):
             if (newCmd.field1 == "setPressure"):
                 P_des[newCmd.field2] = newCmd.field3
-                # print("Setting channel " + str(newCmd.field2) + " to " + str(newCmd.field3))
-
 
     def get_id(self):
         '''
