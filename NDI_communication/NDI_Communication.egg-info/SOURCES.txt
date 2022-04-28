@@ -1,0 +1,7 @@
+setup.py
+NDI_Communication.egg-info/PKG-INFO
+NDI_Communication.egg-info/SOURCES.txt
+NDI_Communication.egg-info/dependency_links.txt
+NDI_Communication.egg-info/requires.txt
+NDI_Communication.egg-info/top_level.txt
+NDI_communication/__init__.py

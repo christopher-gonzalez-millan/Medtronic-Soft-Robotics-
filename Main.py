@@ -14,8 +14,8 @@ import threading
 from queue import Queue
 import logging
 from csv_logger import CsvLogger
-from NDI_Code.NDISensor import NDISensor
-from Py_Arduino_Communication.arduino_control import arduino_control
+import NDI_communication
+import arduino_communcation
 import numpy as np 
 from PIL import Image,  ImageTk
 import time
@@ -43,8 +43,8 @@ csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
                         level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
 sample_num = 0          # variable to keep track of the samples for any data collection
 # Init EM Nav and Arduino
-ndi = NDISensor.NDISensor()
-arduino = arduino_control.arduino()
+#ndi = NDISensor.NDISensor()
+arduino = arduino_communcation.arduino()
 arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
 
 # Parameters for controller
@@ -591,7 +591,7 @@ class App:
         
     """      
 
-      
+"""      
 class openControllerThread(threading.Thread):
     '''
     Implements proportional controller
@@ -951,7 +951,7 @@ class pidControllerThread(threading.Thread):
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
             print('Exception raise failure')       
-
+"""
 
 def main(): 
     #function to calibrate the correct DPI of current computer

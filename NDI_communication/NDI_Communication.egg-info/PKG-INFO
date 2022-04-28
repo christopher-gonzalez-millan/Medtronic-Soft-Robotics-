@@ -1,0 +1,18 @@
+Metadata-Version: 2.1
+Name: NDI-Communication
+Version: 0.0.1
+Summary: NDI Sensor Communcation
+Author: Christopher Gonzalez-Millan
+Author-email: 
+License: UNKNOWN
+Keywords: python
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Education
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+
+This package standarizes the communicatioin of Aurora NDI Electromagnetic tracking sensor to the python for using in CU Boulder Medtronic Team 7 2021-2022 senior design
+

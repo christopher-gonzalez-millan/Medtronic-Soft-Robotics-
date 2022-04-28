@@ -10,11 +10,41 @@ Welcome to Medtronic Soft Robot for Surgical Intervention's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-Python
+Main App
 ===================
-.. automodule:: Python.circlePlot
+.. automodule:: Main
    :members:
 
+
+Three Channel PI Control
+===================
+.. automodule:: three_channel_PI_control
+   :members:
+
+Three Channel Open Control
+===================
+.. automodule:: three_channel_open_control
+   :members:
+
+One Channel PI Control
+===================
+.. automodule:: open_channel_PI_control
+   :members:
+
+Open Channel Open Control
+===================
+.. automodule:: open_channel_open_control
+   :members:
+
+Open Channel Open Control
+===================
+.. automodule:: open_channel_open_control
+   :members:
+
+Table map 
+===================
+.. automodule:: open_channel_open_control
+   :members:
 
 Indices and tables
 ==================

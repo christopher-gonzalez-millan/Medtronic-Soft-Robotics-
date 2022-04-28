@@ -1,0 +1,18 @@
+Metadata-Version: 2.1
+Name: arduino-control
+Version: 0.0.4
+Summary: Arudion Python Communcation
+Author: 
+Author-email: 
+License: UNKNOWN
+Keywords: python,first package
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Education
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+
+This package standarizes the communicatioin of the arduino control board to the python 
+

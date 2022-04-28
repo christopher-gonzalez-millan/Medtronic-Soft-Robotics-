@@ -1,0 +1,2 @@
+ndicapi==3.2.8
+pyserial==3.5
