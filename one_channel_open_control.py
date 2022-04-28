@@ -5,8 +5,8 @@
             Provides GUI with simple commands like read pressure, write pressure, and read position
             for one channel robots only
 '''
-from NDISensor import NDISensor
-from arduino_control import arduino_control
+import NDI_communication
+import arduino_communcation
 import threading
 from queue import Queue
 import ctypes
@@ -16,9 +16,11 @@ from tkinter import *
 from tkinter import ttk
 
 # Init EM Nav and Arduino
-ndi = NDISensor.NDISensor()
-arduino = arduino_control.arduino()
-
+try:
+    ndi = NDI_communication.NDISensor()
+    arduino = arduino_communcation.arduino()
+except:
+  print("Arduino or NDI sensor not connected")
 # Queue for inter-thread communication
 commandsFromGUI = Queue()
 
@@ -26,7 +28,7 @@ class command:
     '''
     Basic command format to be used in the queue. We pass along
     id's and any other important info in field1 and field2
-    ''' 
+    '''
     def __init__(self, id, field1, field2):
         self.id = id
         self.field1 = field1
@@ -122,7 +124,7 @@ class controllerThread(threading.Thread):
                     newCmd = commandsFromGUI.get()
                     self.handleGUICommand(newCmd)
                     time.sleep(.07)
-            
+
         finally:
             # global ser
             print('Controller thread teminated')
@@ -142,7 +144,7 @@ class controllerThread(threading.Thread):
               ctypes.py_object(SystemExit))
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
-            print('Exception raise failure') 
+            print('Exception raise failure')
 
 def main():
     '''

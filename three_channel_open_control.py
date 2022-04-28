@@ -4,8 +4,8 @@
  * @brief   This script allows for open loop control of
             a 3 channel robot (i.e manually controlling pressures)
 '''
-from NDI_Code.NDISensor import NDISensor
-from Py_Arduino_Communication.arduino_control import arduino_control
+import NDI_communication
+import arduino_communcation
 import threading
 from queue import Queue
 import ctypes
@@ -20,13 +20,16 @@ from scipy import signal as sg
 import numpy as np
 import random
 
-logging.basicConfig(filename = 'data.log', level = logging.WARNING, 
+logging.basicConfig(filename = 'data.log', level = logging.WARNING,
     format = '%(asctime)s,%(message)s')
 
 
 # Init Arduino
-arduino = arduino_control.arduino()
-arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
+try:
+    arduino = arduino_communcation.arduino()
+    arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
+except:
+    print("Arduino or NDI sensor not connected")
 
 P_des = np.array([12.25, 12.25, 12.25])     # desired pressure we're sending to the Arduino (c0, c1, c2)
 P_act = np.array([0.0, 0.0, 0.0])           # actual pressure read from the pressure sensor (c0, c1, c2)
@@ -128,7 +131,7 @@ class GUI:
         '''
         newCmd = command("Arduino", "setPressure", 1, float(self.channel1_entry.get())) # arduino.channel1
         commandsFromGUI.put(newCmd)
-    
+
     def GUI_setChannel2(self, *args):
         '''
         Handle setting the channel in pressure 2
@@ -166,7 +169,7 @@ class GUI:
 class controllerThread(threading.Thread):
     '''
     This thread is where the main controller is run
-    for the open controller 
+    for the open controller
     '''
     def __init__(self, name):
         threading.Thread.__init__(self)
@@ -202,7 +205,7 @@ class controllerThread(threading.Thread):
 
         # Safety check so we don't the arduino a super high or low pressure!
         # it will blow up if you have the wrong bounds
-        for channel in range(3): 
+        for channel in range(3):
             if P_des[channel] < 9.0:
                 # lower limit of the pressure we are sending into the controller
                 P_des[channel] = 9.0
@@ -226,7 +229,7 @@ class controllerThread(threading.Thread):
         Takes place on controller thread
         '''
         global P_des
-        
+
         if (newCmd.id == "Arduino"):
             if (newCmd.field1 == "setPressure"):
                 P_des[newCmd.field2] = newCmd.field3

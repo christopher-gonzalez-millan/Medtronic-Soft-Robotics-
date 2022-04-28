@@ -4,8 +4,8 @@
  * @brief   Basic 1D proportional controller
             for one channel robots only
 '''
-from NDI_Code.NDISensor import NDISensor
-from Py_Arduino_Communication.arduino_control import arduino_control
+import NDI_communication
+import arduino_communcation
 import threading
 from queue import Queue
 import ctypes
@@ -19,17 +19,19 @@ from math import sin, pi
 from scipy import signal as sg
 
 # Data Collection
-logging.basicConfig(filename = 'data.log', level = logging.WARNING, 
+logging.basicConfig(filename = 'data.log', level = logging.WARNING,
     format = '%(asctime)s,%(message)s')
 header = ['date', 'time_diff', 'z_des', 'z_act', 'P_des', 'P_act', 'k_p', 'k_i']
 csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
                         level=logging.INFO, fmt='%(asctime)s,%(message)s', header=header)
 
 # Init EM Nav and Arduino
-ndi = NDISensor.NDISensor()
-arduino = arduino_control.arduino()
-arduino.selectChannels(arduino.ON, arduino.OFF, arduino.OFF)
-
+try:
+    ndi = NDI_communication.NDISensor()
+    arduino = arduino_communcation.arduino()
+    arduino.selectChannels(arduino.ON, arduino.OFF, arduino.OFF)
+except:
+    print("Arduino or NDI sensor not connected")
 # Parameters for controller
 z_des = 40.0        # stores the desired z position input by user
 z_act = 0.0         # actual z_position from EM sensor
@@ -51,7 +53,7 @@ class command:
     '''
     Basic command format to be used in the queue. We pass along
     id's and any other important info in field1 and field2
-    ''' 
+    '''
     def __init__(self, id, field1, field2):
         self.id = id
         self.field1 = field1
@@ -224,7 +226,7 @@ class controllerThread(threading.Thread):
 
         finally:
             print('Controller thread teminated')
-    
+
     def sinusoid_signal(self):
         '''
         Sinusoidal input function with regard to position for the 1D channel
@@ -248,14 +250,14 @@ class controllerThread(threading.Thread):
         global start_time, z_des, time_diff
 
         current_time = time.time()              # current time measured compared to start time
-    
+
         time_diff = current_time - start_time   # time difference used for the signal
 
         A = (80 - 50)/2                         # amplitude of the ramp signal
         C = (80 - 50)/2 + 50                    # shifts the signal up to range of 50 mm to 90 mm
         T = 30                                # period of the signal in seconds
 
-        z_des = A*sg.sawtooth((2*pi/T)*time_diff, width = 0.5) + C       # ramp signal set as a triangle wave           
+        z_des = A*sg.sawtooth((2*pi/T)*time_diff, width = 0.5) + C       # ramp signal set as a triangle wave
 
     def one_D_main(self):
         '''

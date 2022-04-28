@@ -1,5 +1,6 @@
 
-<!DOCTYPE html>
+
+<!doctype html>
 
 <html>
   <head>
@@ -8,27 +9,37 @@
 
     <title>Welcome to Medtronic Soft Robot for Surgical Intervention’s documentation! &#8212; Medtronic Soft Robot for Surgical Intervention 0.01 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css" />
+    
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
+    <script src="_static/bizstyle.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-   
-  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
-  
-  
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
-
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
   </head><body>
-  
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">Medtronic Soft Robot for Surgical Intervention 0.01 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Welcome to Medtronic Soft Robot for Surgical Intervention’s documentation!</a></li> 
+      </ul>
+    </div>  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          
-
           <div class="body" role="main">
             
   <section id="welcome-to-medtronic-soft-robot-for-surgical-intervention-s-documentation">
@@ -36,23 +47,542 @@
 <div class="toctree-wrapper compound">
 </div>
 </section>
-<section id="main-app">
-<h1>Main App<a class="headerlink" href="#main-app" title="Permalink to this headline">¶</a></h1>
+<section id="module-Main">
+<span id="main"></span><h1>Main<a class="headerlink" href="#module-Main" title="Permalink to this headline">¶</a></h1>
+<p>Created on Wed Apr 20 14:52:22 2022</p>
+<p>&#64;author: Christopher</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="Main.ASSETS_PATH">
+<span class="sig-prename descclassname"><span class="pre">Main.</span></span><span class="sig-name descname"><span class="pre">ASSETS_PATH</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">WindowsPath('C:/Users/Christopher/Desktop/Senior</span> <span class="pre">Design/Medtronic-Soft-Robotics-/assets')</span></em><a class="headerlink" href="#Main.ASSETS_PATH" title="Permalink to this definition">¶</a></dt>
+<dd><p>GLOBAL HELPER FUNCTIONS</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="Main.ResizingCanvas">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Main.</span></span><span class="sig-name descname"><span class="pre">ResizingCanvas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#ResizingCanvas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.ResizingCanvas" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="Main.controlWindow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Main.</span></span><span class="sig-name descname"><span class="pre">controlWindow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#controlWindow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.controlWindow" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="Main.controlWindow.buildUX">
+<span class="sig-name descname"><span class="pre">buildUX</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#controlWindow.buildUX"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.controlWindow.buildUX" title="Permalink to this definition">¶</a></dt>
+<dd><p>UX Rectangle: making pretty but unnecessary rectangles</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Main.controlWindow.handleLoggingCommand">
+<span class="sig-name descname"><span class="pre">handleLoggingCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#controlWindow.handleLoggingCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.controlWindow.handleLoggingCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start logging</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Main.controlWindow.handleSetXPositionCommand">
+<span class="sig-name descname"><span class="pre">handleSetXPositionCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#controlWindow.handleSetXPositionCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.controlWindow.handleSetXPositionCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the position from the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Main.controlWindow.handleSetYPositionCommand">
+<span class="sig-name descname"><span class="pre">handleSetYPositionCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#controlWindow.handleSetYPositionCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.controlWindow.handleSetYPositionCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the position from the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Main.controlWindow.handleSetZPositionCommand">
+<span class="sig-name descname"><span class="pre">handleSetZPositionCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#controlWindow.handleSetZPositionCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.controlWindow.handleSetZPositionCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the position from the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Main.controlWindow.setChannel0">
+<span class="sig-name descname"><span class="pre">setChannel0</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#controlWindow.setChannel0"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.controlWindow.setChannel0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the channel in pressure 0</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Main.controlWindow.setChannel1">
+<span class="sig-name descname"><span class="pre">setChannel1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#controlWindow.setChannel1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.controlWindow.setChannel1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the channel in pressure 1</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Main.controlWindow.setChannel2">
+<span class="sig-name descname"><span class="pre">setChannel2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#controlWindow.setChannel2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.controlWindow.setChannel2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the channel in pressure 2</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="Main.pidTuningWindow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Main.</span></span><span class="sig-name descname"><span class="pre">pidTuningWindow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#pidTuningWindow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.pidTuningWindow" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="Main.pidTuningWindow.handleSetKdCommand">
+<span class="sig-name descname"><span class="pre">handleSetKdCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#pidTuningWindow.handleSetKdCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.pidTuningWindow.handleSetKdCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the gain from the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Main.pidTuningWindow.handleSetKiCommand">
+<span class="sig-name descname"><span class="pre">handleSetKiCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#pidTuningWindow.handleSetKiCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.pidTuningWindow.handleSetKiCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the gain from the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Main.pidTuningWindow.handleSetKpCommand">
+<span class="sig-name descname"><span class="pre">handleSetKpCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#pidTuningWindow.handleSetKpCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.pidTuningWindow.handleSetKpCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the gain from the GUI</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="Main.shalomWindow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Main.</span></span><span class="sig-name descname"><span class="pre">shalomWindow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Main.html#shalomWindow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Main.shalomWindow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </section>
-<section id="three-channel-pi-control">
-<h1>Three Channel PI Control<a class="headerlink" href="#three-channel-pi-control" title="Permalink to this headline">¶</a></h1>
+<section id="module-three_channel_PI_control">
+<span id="three-channel-pi-control"></span><h1>Three Channel PI Control<a class="headerlink" href="#module-three_channel_PI_control" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p>&#64;file    three_channel_PI_control.py</p></li>
+<li><p>&#64;author  CU Boulder Medtronic Team 7</p></li>
+<li><dl class="simple">
+<dt>&#64;brief   Basic 2D proportional and/or PID controller</dt><dd><p>used for 3 channel robots</p>
+</dd>
+</dl>
+</li>
+</ul>
+<dl class="py class">
+<dt class="sig sig-object py" id="three_channel_PI_control.GUI">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">three_channel_PI_control.</span></span><span class="sig-name descname"><span class="pre">GUI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">master</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#GUI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.GUI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for building GUI</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.GUI.GUI_handleDataDisplay">
+<span class="sig-name descname"><span class="pre">GUI_handleDataDisplay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#GUI.GUI_handleDataDisplay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.GUI.GUI_handleDataDisplay" title="Permalink to this definition">¶</a></dt>
+<dd><p>Display control algorithm parameters to the GUI. When the GUI is open,
+you can press and hold enter to display all the values</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.GUI.GUI_handleLoggingCommand">
+<span class="sig-name descname"><span class="pre">GUI_handleLoggingCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#GUI.GUI_handleLoggingCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.GUI.GUI_handleLoggingCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function handles starting of the logging. Starting the logging
+sequence also starts running a predefined trajectory like a circle.
+You can uncomment the circle_signal call if you want to record data
+while still maintaining manual control</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.GUI.GUI_handleSetKdCommand">
+<span class="sig-name descname"><span class="pre">GUI_handleSetKdCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#GUI.GUI_handleSetKdCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.GUI.GUI_handleSetKdCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the gain from the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.GUI.GUI_handleSetKiCommand">
+<span class="sig-name descname"><span class="pre">GUI_handleSetKiCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#GUI.GUI_handleSetKiCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.GUI.GUI_handleSetKiCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the gain from the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.GUI.GUI_handleSetKpCommand">
+<span class="sig-name descname"><span class="pre">GUI_handleSetKpCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#GUI.GUI_handleSetKpCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.GUI.GUI_handleSetKpCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the gain from the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.GUI.GUI_handleSetXPositionCommand">
+<span class="sig-name descname"><span class="pre">GUI_handleSetXPositionCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#GUI.GUI_handleSetXPositionCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.GUI.GUI_handleSetXPositionCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the position from the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.GUI.GUI_handlesetZPositionCommand">
+<span class="sig-name descname"><span class="pre">GUI_handlesetZPositionCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#GUI.GUI_handlesetZPositionCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.GUI.GUI_handlesetZPositionCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the position from the GUI</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="three_channel_PI_control.command">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">three_channel_PI_control.</span></span><span class="sig-name descname"><span class="pre">command</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Basic command format to be used in the queue. We pass along
+id’s and any other important info in field1 and field2</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="three_channel_PI_control.controllerThread">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">three_channel_PI_control.</span></span><span class="sig-name descname"><span class="pre">controllerThread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#controllerThread"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.controllerThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>This thread is where the main controller is run.
+This is where our PID controller lives</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.controllerThread.circle_signal">
+<span class="sig-name descname"><span class="pre">circle_signal</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#controllerThread.circle_signal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.controllerThread.circle_signal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function will send position commands to follow a circle</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.controllerThread.fig_eight_signal">
+<span class="sig-name descname"><span class="pre">fig_eight_signal</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#controllerThread.fig_eight_signal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.controllerThread.fig_eight_signal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function will try to send robot in a figure 8</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.controllerThread.forceVectorCalc">
+<span class="sig-name descname"><span class="pre">forceVectorCalc</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#controllerThread.forceVectorCalc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.controllerThread.forceVectorCalc" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculates the force vector solution for the controller given the error vector and the unit vectors of each channel</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.controllerThread.get_id">
+<span class="sig-name descname"><span class="pre">get_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#controllerThread.get_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.controllerThread.get_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns id of the respective thread</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.controllerThread.handleGUICommand">
+<span class="sig-name descname"><span class="pre">handleGUICommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">newCmd</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#controllerThread.handleGUICommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.controllerThread.handleGUICommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to handle commands from the GUI.
+Takes place on controller thread</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.controllerThread.raise_exception">
+<span class="sig-name descname"><span class="pre">raise_exception</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#controllerThread.raise_exception"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.controllerThread.raise_exception" title="Permalink to this definition">¶</a></dt>
+<dd><p>raise exception for controller thread</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.controllerThread.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#controllerThread.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.controllerThread.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Infinite loop for controller until turned off.
+Continues to look for new commands from the GUI
+and runs the three channel main.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.controllerThread.sendDesiredPressure">
+<span class="sig-name descname"><span class="pre">sendDesiredPressure</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#controllerThread.sendDesiredPressure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.controllerThread.sendDesiredPressure" title="Permalink to this definition">¶</a></dt>
+<dd><p>convert P_des and send this pressure into the Arduino</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.controllerThread.three_channel_algorithm">
+<span class="sig-name descname"><span class="pre">three_channel_algorithm</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#controllerThread.three_channel_algorithm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.controllerThread.three_channel_algorithm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Proportional/PID feedback loop algorithm (vector based solution – includes dot product and bounded least squares solution)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_PI_control.controllerThread.three_channel_main">
+<span class="sig-name descname"><span class="pre">three_channel_main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#controllerThread.three_channel_main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.controllerThread.three_channel_main" title="Permalink to this definition">¶</a></dt>
+<dd><p>main function used in thread to perform 3 channel algorithm</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="three_channel_PI_control.main">
+<span class="sig-prename descclassname"><span class="pre">three_channel_PI_control.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_PI_control.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_PI_control.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starting point for script</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="three_channel_PI_control.max_pressure">
+<span class="sig-prename descclassname"><span class="pre">three_channel_PI_control.</span></span><span class="sig-name descname"><span class="pre">max_pressure</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">array([16,</span> <span class="pre">16,</span> <span class="pre">16])</span></em><a class="headerlink" href="#three_channel_PI_control.max_pressure" title="Permalink to this definition">¶</a></dt>
+<dd><p>These gain values have been tuned for the 2x robots
+that we were made. It can vary for all the different robots,
+especially the max pressure. Last value is bound for int sum.
+This is where we reset the integral term to 0 to avoid windup</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="three_channel_PI_control.time_diff">
+<span class="sig-prename descclassname"><span class="pre">three_channel_PI_control.</span></span><span class="sig-name descname"><span class="pre">time_diff</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#three_channel_PI_control.time_diff" title="Permalink to this definition">¶</a></dt>
+<dd><p>These gain values have been tuned for the 2x robots
+that we were made. It can vary for all the different robots,
+especially the max pressure. Last value is bound for int sum.
+This is where we reset the integral term to 0 to avoid windup</p>
+</dd></dl>
+
 </section>
-<section id="three-channel-open-control">
-<h1>Three Channel Open Control<a class="headerlink" href="#three-channel-open-control" title="Permalink to this headline">¶</a></h1>
+<section id="module-three_channel_open_control">
+<span id="three-channel-open-control"></span><h1>Three Channel Open Control<a class="headerlink" href="#module-three_channel_open_control" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p>&#64;file    three_channel_open_control.py</p></li>
+<li><p>&#64;author  CU Boulder Medtronic Team 7</p></li>
+<li><dl class="simple">
+<dt>&#64;brief   This script allows for open loop control of</dt><dd><p>a 3 channel robot (i.e manually controlling pressures)</p>
+</dd>
+</dl>
+</li>
+</ul>
+<dl class="py class">
+<dt class="sig sig-object py" id="three_channel_open_control.GUI">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">three_channel_open_control.</span></span><span class="sig-name descname"><span class="pre">GUI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">master</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#GUI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.GUI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for building GUI</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_open_control.GUI.GUI_handleDataDisplay">
+<span class="sig-name descname"><span class="pre">GUI_handleDataDisplay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#GUI.GUI_handleDataDisplay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.GUI.GUI_handleDataDisplay" title="Permalink to this definition">¶</a></dt>
+<dd><p>Display control algorithm parameters to the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_open_control.GUI.GUI_handleLoggingCommand">
+<span class="sig-name descname"><span class="pre">GUI_handleLoggingCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#GUI.GUI_handleLoggingCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.GUI.GUI_handleLoggingCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start logging</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_open_control.GUI.GUI_setChannel0">
+<span class="sig-name descname"><span class="pre">GUI_setChannel0</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#GUI.GUI_setChannel0"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.GUI.GUI_setChannel0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the channel in pressure 0</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_open_control.GUI.GUI_setChannel1">
+<span class="sig-name descname"><span class="pre">GUI_setChannel1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#GUI.GUI_setChannel1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.GUI.GUI_setChannel1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the channel in pressure 1</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_open_control.GUI.GUI_setChannel2">
+<span class="sig-name descname"><span class="pre">GUI_setChannel2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#GUI.GUI_setChannel2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.GUI.GUI_setChannel2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the channel in pressure 2</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="three_channel_open_control.command">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">three_channel_open_control.</span></span><span class="sig-name descname"><span class="pre">command</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Basic command format to be used in the queue. We pass along
+id’s and any other important info in field1 and field2</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="three_channel_open_control.controllerThread">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">three_channel_open_control.</span></span><span class="sig-name descname"><span class="pre">controllerThread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#controllerThread"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.controllerThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>This thread is where the main controller is run
+for the open controller</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_open_control.controllerThread.get_id">
+<span class="sig-name descname"><span class="pre">get_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#controllerThread.get_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.controllerThread.get_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns id of the respective thread</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_open_control.controllerThread.handleGUICommand">
+<span class="sig-name descname"><span class="pre">handleGUICommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">newCmd</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#controllerThread.handleGUICommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.controllerThread.handleGUICommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to handle commands from the GUI.
+Takes place on controller thread</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_open_control.controllerThread.raise_exception">
+<span class="sig-name descname"><span class="pre">raise_exception</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#controllerThread.raise_exception"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.controllerThread.raise_exception" title="Permalink to this definition">¶</a></dt>
+<dd><p>raise exception for controller thread</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_open_control.controllerThread.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#controllerThread.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.controllerThread.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Infinite loop for controller until turned off.
+Continues to look for new commands from the GUI.
+and runs the three channel main.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="three_channel_open_control.controllerThread.three_channel_main">
+<span class="sig-name descname"><span class="pre">three_channel_main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#controllerThread.three_channel_main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.controllerThread.three_channel_main" title="Permalink to this definition">¶</a></dt>
+<dd><p>main function used in thread to perform 3 channel control</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="three_channel_open_control.main">
+<span class="sig-prename descclassname"><span class="pre">three_channel_open_control.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/three_channel_open_control.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#three_channel_open_control.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starting point for script</p>
+</dd></dl>
+
 </section>
-<section id="one-channel-pi-control">
-<h1>One Channel PI Control<a class="headerlink" href="#one-channel-pi-control" title="Permalink to this headline">¶</a></h1>
+<section id="module-one_channel_PI_control">
+<span id="one-channel-pi-control"></span><h1>One Channel PI Control<a class="headerlink" href="#module-one_channel_PI_control" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p>&#64;file    one_channel_PI_control.py</p></li>
+<li><p>&#64;author  CU Boulder Medtronic Team 7</p></li>
+<li><dl class="simple">
+<dt>&#64;brief   Basic 1D proportional controller</dt><dd><p>for one channel robots only</p>
+</dd>
+</dl>
+</li>
+</ul>
+<dl class="py class">
+<dt class="sig sig-object py" id="one_channel_PI_control.GUI">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">one_channel_PI_control.</span></span><span class="sig-name descname"><span class="pre">GUI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">master</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#GUI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.GUI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for building GUI</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.GUI.GUI_handleDataDisplay">
+<span class="sig-name descname"><span class="pre">GUI_handleDataDisplay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#GUI.GUI_handleDataDisplay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.GUI.GUI_handleDataDisplay" title="Permalink to this definition">¶</a></dt>
+<dd><p>Display control algorithm parameters to the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.GUI.GUI_handleLoggingCommand">
+<span class="sig-name descname"><span class="pre">GUI_handleLoggingCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#GUI.GUI_handleLoggingCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.GUI.GUI_handleLoggingCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start logging</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.GUI.GUI_handleSetKiCommand">
+<span class="sig-name descname"><span class="pre">GUI_handleSetKiCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#GUI.GUI_handleSetKiCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.GUI.GUI_handleSetKiCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the gain from the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.GUI.GUI_handleSetKpCommand">
+<span class="sig-name descname"><span class="pre">GUI_handleSetKpCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#GUI.GUI_handleSetKpCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.GUI.GUI_handleSetKpCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the gain from the GUI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.GUI.GUI_handleSetPositionCommand">
+<span class="sig-name descname"><span class="pre">GUI_handleSetPositionCommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#GUI.GUI_handleSetPositionCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.GUI.GUI_handleSetPositionCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle setting the position from the GUI</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="one_channel_PI_control.command">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">one_channel_PI_control.</span></span><span class="sig-name descname"><span class="pre">command</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Basic command format to be used in the queue. We pass along
+id’s and any other important info in field1 and field2</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="one_channel_PI_control.controllerThread">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">one_channel_PI_control.</span></span><span class="sig-name descname"><span class="pre">controllerThread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#controllerThread"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.controllerThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implements proportional controller</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.controllerThread.get_id">
+<span class="sig-name descname"><span class="pre">get_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#controllerThread.get_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.controllerThread.get_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns id of the respective thread</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.controllerThread.handleGUICommand">
+<span class="sig-name descname"><span class="pre">handleGUICommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">newCmd</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#controllerThread.handleGUICommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.controllerThread.handleGUICommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to handle commands from the GUI.
+Takes place on controller thread</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.controllerThread.one_D_algorithm">
+<span class="sig-name descname"><span class="pre">one_D_algorithm</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#controllerThread.one_D_algorithm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.controllerThread.one_D_algorithm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Proportional feedback loop algorithm (includes our method and Shalom’s del P)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.controllerThread.one_D_main">
+<span class="sig-name descname"><span class="pre">one_D_main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#controllerThread.one_D_main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.controllerThread.one_D_main" title="Permalink to this definition">¶</a></dt>
+<dd><p>main function used in thread to perform 1D algorithm</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.controllerThread.raise_exception">
+<span class="sig-name descname"><span class="pre">raise_exception</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#controllerThread.raise_exception"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.controllerThread.raise_exception" title="Permalink to this definition">¶</a></dt>
+<dd><p>raise exception for controller thread</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.controllerThread.ramp_signal">
+<span class="sig-name descname"><span class="pre">ramp_signal</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#controllerThread.ramp_signal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.controllerThread.ramp_signal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ramp input function with regard to position for the 1D channel</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.controllerThread.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#controllerThread.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.controllerThread.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Infinite loop for controller until turned off.
+Continues to look for new commands from the GUI.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.controllerThread.sendDesiredPressure">
+<span class="sig-name descname"><span class="pre">sendDesiredPressure</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#controllerThread.sendDesiredPressure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.controllerThread.sendDesiredPressure" title="Permalink to this definition">¶</a></dt>
+<dd><p>convert P_des and send this pressure into the Arduino</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_PI_control.controllerThread.sinusoid_signal">
+<span class="sig-name descname"><span class="pre">sinusoid_signal</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#controllerThread.sinusoid_signal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.controllerThread.sinusoid_signal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sinusoidal input function with regard to position for the 1D channel</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="one_channel_PI_control.main">
+<span class="sig-prename descclassname"><span class="pre">one_channel_PI_control.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_PI_control.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_PI_control.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starting point for script</p>
+</dd></dl>
+
 </section>
-<section id="open-channel-open-control">
-<h1>Open Channel Open Control<a class="headerlink" href="#open-channel-open-control" title="Permalink to this headline">¶</a></h1>
-</section>
-<section id="id1">
-<h1>Open Channel Open Control<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<section id="module-one_channel_open_control">
+<span id="open-channel-open-control"></span><h1>Open Channel Open Control<a class="headerlink" href="#module-one_channel_open_control" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p>&#64;file    basic_GUI_Implementation.py</p></li>
+<li><p>&#64;author  CU Boulder Medtronic Team 7</p></li>
+<li><dl class="simple">
+<dt>&#64;brief   Integrates Arduino with EM sensor in one python script.</dt><dd><p>Provides GUI with simple commands like read pressure, write pressure, and read position
+for one channel robots only</p>
+</dd>
+</dl>
+</li>
+</ul>
+<dl class="py function">
+<dt class="sig sig-object py" id="one_channel_open_control.GUI_handleArduinoCommand">
+<span class="sig-prename descclassname"><span class="pre">one_channel_open_control.</span></span><span class="sig-name descname"><span class="pre">GUI_handleArduinoCommand</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_open_control.html#GUI_handleArduinoCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_open_control.GUI_handleArduinoCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handling Arduino related commands from GUI</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="one_channel_open_control.command">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">one_channel_open_control.</span></span><span class="sig-name descname"><span class="pre">command</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_open_control.html#command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_open_control.command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Basic command format to be used in the queue. We pass along
+id’s and any other important info in field1 and field2</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="one_channel_open_control.controllerThread">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">one_channel_open_control.</span></span><span class="sig-name descname"><span class="pre">controllerThread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_open_control.html#controllerThread"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_open_control.controllerThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implements open controller for 1D control</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_open_control.controllerThread.handleGUICommand">
+<span class="sig-name descname"><span class="pre">handleGUICommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">newCmd</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_open_control.html#controllerThread.handleGUICommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_open_control.controllerThread.handleGUICommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to handle commands from the GUI.
+Takes place on controller thread</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="one_channel_open_control.controllerThread.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_open_control.html#controllerThread.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_open_control.controllerThread.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>target function of the thread class</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="one_channel_open_control.main">
+<span class="sig-prename descclassname"><span class="pre">one_channel_open_control.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/one_channel_open_control.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#one_channel_open_control.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starting point for script</p>
+</dd></dl>
+
 </section>
 <section id="table-map">
 <h1>Table map<a class="headerlink" href="#table-map" title="Permalink to this headline">¶</a></h1>
@@ -67,30 +597,33 @@
 </section>
 
 
+            <div class="clearer"></div>
           </div>
-          
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="#">Medtronic Soft Robot for Surgical Intervention</a></h1>
-
-
-
-
-
-
-
-
-<h3>Navigation</h3>
-
-<div class="relations">
-<h3>Related Topics</h3>
-<ul>
-  <li><a href="#">Documentation overview</a><ul>
-  </ul></li>
+  <div>
+    <h3><a href="#">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Welcome to Medtronic Soft Robot for Surgical Intervention’s documentation!</a></li>
+<li><a class="reference internal" href="#module-Main">Main</a></li>
+<li><a class="reference internal" href="#module-three_channel_PI_control">Three Channel PI Control</a></li>
+<li><a class="reference internal" href="#module-three_channel_open_control">Three Channel Open Control</a></li>
+<li><a class="reference internal" href="#module-one_channel_PI_control">One Channel PI Control</a></li>
+<li><a class="reference internal" href="#module-one_channel_open_control">Open Channel Open Control</a></li>
+<li><a class="reference internal" href="#table-map">Table map</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
 </ul>
-</div>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
 <div id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
@@ -101,32 +634,26 @@
     </div>
 </div>
 <script>$('#searchbox').show(0);</script>
-
-
-
-
-
-
-
-
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="footer">
-      &copy;2022, Brady King// Christopher Gonzalez-Millan // William Wang.
-      
-      |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
-      
-      |
-      <a href="_sources/index.rst.txt"
-          rel="nofollow">Page source</a>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">Medtronic Soft Robot for Surgical Intervention 0.01 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Welcome to Medtronic Soft Robot for Surgical Intervention’s documentation!</a></li> 
+      </ul>
     </div>
-
-    
-
-    
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2022, Brady King// Christopher Gonzalez-Millan // William Wang.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.4.0.
+    </div>
   </body>
 </html>

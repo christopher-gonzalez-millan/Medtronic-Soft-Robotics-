@@ -1,0 +1,263 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>one_channel_open_control &#8212; Medtronic Soft Robot for Surgical Intervention 0.01 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for one_channel_open_control</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd"> * @file    basic_GUI_Implementation.py</span>
+<span class="sd"> * @author  CU Boulder Medtronic Team 7</span>
+<span class="sd"> * @brief   Integrates Arduino with EM sensor in one python script.</span>
+<span class="sd">            Provides GUI with simple commands like read pressure, write pressure, and read position</span>
+<span class="sd">            for one channel robots only</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">import</span> <span class="nn">NDI_communication</span>
+<span class="kn">import</span> <span class="nn">arduino_communcation</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">from</span> <span class="nn">queue</span> <span class="kn">import</span> <span class="n">Queue</span>
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">serial</span> <span class="k">as</span> <span class="nn">pys</span>
+<span class="kn">from</span> <span class="nn">tkinter</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">tkinter</span> <span class="kn">import</span> <span class="n">ttk</span>
+
+<span class="c1"># Init EM Nav and Arduino</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">ndi</span> <span class="o">=</span> <span class="n">NDI_communication</span><span class="o">.</span><span class="n">NDISensor</span><span class="p">()</span>
+    <span class="n">arduino</span> <span class="o">=</span> <span class="n">arduino_communcation</span><span class="o">.</span><span class="n">arduino</span><span class="p">()</span>
+<span class="k">except</span><span class="p">:</span>
+  <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Arduino or NDI sensor not connected&quot;</span><span class="p">)</span>
+<span class="c1"># Queue for inter-thread communication</span>
+<span class="n">commandsFromGUI</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
+
+<div class="viewcode-block" id="command"><a class="viewcode-back" href="../index.html#one_channel_open_control.command">[docs]</a><span class="k">class</span> <span class="nc">command</span><span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Basic command format to be used in the queue. We pass along</span>
+<span class="sd">    id&#39;s and any other important info in field1 and field2</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">field1</span><span class="p">,</span> <span class="n">field2</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="nb">id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">field1</span> <span class="o">=</span> <span class="n">field1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">field2</span> <span class="o">=</span> <span class="n">field2</span></div>
+
+
+<span class="c1"># &lt;===================== Building GUI =====================&gt;</span>
+<span class="n">root</span> <span class="o">=</span> <span class="n">Tk</span><span class="p">()</span>
+<span class="n">root</span><span class="o">.</span><span class="n">geometry</span><span class="p">(</span><span class="s2">&quot;400x300&quot;</span><span class="p">)</span>
+<span class="n">root</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;GUI&#39;</span><span class="p">)</span>
+<span class="n">root</span><span class="p">[</span><span class="s1">&#39;bg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;#0059b3&#39;</span>
+
+<div class="viewcode-block" id="GUI_handleArduinoCommand"><a class="viewcode-back" href="../index.html#one_channel_open_control.GUI_handleArduinoCommand">[docs]</a><span class="k">def</span> <span class="nf">GUI_handleArduinoCommand</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Handling Arduino related commands from GUI</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">global</span> <span class="n">arduino_entry</span>
+    <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;Arduino&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">arduino_entry</span><span class="o">.</span><span class="n">get</span><span class="p">()),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span></div>
+
+<span class="n">labelText</span><span class="o">=</span><span class="n">StringVar</span><span class="p">()</span>
+<span class="n">labelText</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;Enter desired pressure [psi]:&quot;</span><span class="p">)</span>
+<span class="n">labelDir</span><span class="o">=</span><span class="n">Label</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">textvariable</span><span class="o">=</span><span class="n">labelText</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">labelDir</span><span class="o">.</span><span class="n">pack</span><span class="p">()</span>
+
+<span class="c1"># Create an Entry widget to accept User Input</span>
+<span class="n">arduino_entry</span><span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span> <span class="mi">20</span><span class="p">)</span>
+<span class="n">arduino_entry</span><span class="o">.</span><span class="n">focus_set</span><span class="p">()</span>
+<span class="n">arduino_entry</span><span class="o">.</span><span class="n">pack</span><span class="p">()</span>
+<span class="n">ttk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span> <span class="s2">&quot;Send&quot;</span><span class="p">,</span><span class="n">width</span><span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">command</span><span class="o">=</span><span class="n">GUI_handleArduinoCommand</span><span class="p">)</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">pady</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">GUI_handlePressureRead</span><span class="p">():</span>
+    <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;Arduino&quot;</span><span class="p">,</span> <span class="s2">&quot;read&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span>
+
+<span class="n">ttk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span> <span class="s2">&quot;Read Pressure from Arduino&quot;</span><span class="p">,</span><span class="n">width</span><span class="o">=</span> <span class="mi">30</span><span class="p">,</span> <span class="n">command</span><span class="o">=</span><span class="n">GUI_handlePressureRead</span><span class="p">)</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">pady</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+<span class="c1"># Handling EM Sensor = realted commands from GUI</span>
+<span class="k">def</span> <span class="nf">GUI_handleEMcommand</span><span class="p">():</span>
+    <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;EM_Sensor&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span>
+
+<span class="n">ttk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span> <span class="s2">&quot;Read Position from EM Sensor&quot;</span><span class="p">,</span><span class="n">width</span><span class="o">=</span> <span class="mi">30</span><span class="p">,</span> <span class="n">command</span><span class="o">=</span><span class="n">GUI_handleEMcommand</span><span class="p">)</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">pady</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<span class="c1"># &lt;==========================================================&gt;</span>
+
+<div class="viewcode-block" id="controllerThread"><a class="viewcode-back" href="../index.html#one_channel_open_control.controllerThread">[docs]</a><span class="k">class</span> <span class="nc">controllerThread</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Implements open controller for 1D control</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+<div class="viewcode-block" id="controllerThread.handleGUICommand"><a class="viewcode-back" href="../index.html#one_channel_open_control.controllerThread.handleGUICommand">[docs]</a>    <span class="k">def</span> <span class="nf">handleGUICommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">newCmd</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Function to handle commands from the GUI.</span>
+<span class="sd">        Takes place on controller thread</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">newCmd</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="s2">&quot;Arduino&quot;</span><span class="p">):</span>
+            <span class="k">global</span> <span class="n">ser</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">newCmd</span><span class="o">.</span><span class="n">field1</span> <span class="o">==</span> <span class="s2">&quot;read&quot;</span><span class="p">):</span>
+                <span class="n">P_act</span> <span class="o">=</span> <span class="n">arduino</span><span class="o">.</span><span class="n">getActualPressure</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Current Pressure: &quot;</span><span class="p">,</span> <span class="n">P_act</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">P_des</span> <span class="o">=</span> <span class="n">newCmd</span><span class="o">.</span><span class="n">field1</span>
+
+                <span class="k">if</span> <span class="n">P_des</span> <span class="o">&lt;</span> <span class="mf">9.0</span><span class="p">:</span>
+                    <span class="c1"># lower limit of the pressure we are sending into the controller</span>
+                    <span class="n">P_des</span> <span class="o">=</span> <span class="mf">9.0</span>
+                <span class="k">elif</span> <span class="n">P_des</span> <span class="o">&gt;</span> <span class="mf">13.25</span><span class="p">:</span>
+                    <span class="c1"># higher limit of the pressure we are sending into the controller</span>
+                    <span class="n">P_des</span> <span class="o">=</span> <span class="mf">13.25</span>
+
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Setting pressure to : &quot;</span><span class="p">,</span> <span class="n">P_des</span><span class="p">)</span>
+                <span class="n">arduino</span><span class="o">.</span><span class="n">sendDesiredPressure</span><span class="p">(</span><span class="n">P_des</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="p">(</span><span class="n">newCmd</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="s2">&quot;EM_Sensor&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;controller wants to read position&quot;</span><span class="p">)</span>
+            <span class="k">global</span> <span class="n">ndi</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">position</span> <span class="o">=</span> <span class="n">ndi</span><span class="o">.</span><span class="n">getPosition</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">position</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Delta Z: &quot;</span><span class="p">,</span> <span class="n">position</span><span class="o">.</span><span class="n">deltaZ</span><span class="p">)</span>
+                    <span class="k">break</span></div>
+
+<div class="viewcode-block" id="controllerThread.run"><a class="viewcode-back" href="../index.html#one_channel_open_control.controllerThread.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        target function of the thread class</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">empty</span><span class="p">()</span> <span class="o">==</span> <span class="kc">False</span><span class="p">):</span>
+                    <span class="n">newCmd</span> <span class="o">=</span> <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">handleGUICommand</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">.07</span><span class="p">)</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># global ser</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Controller thread teminated&#39;</span><span class="p">)</span>
+            <span class="n">ser</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">get_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># returns id of the respective thread</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_thread_id&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thread_id</span>
+        <span class="k">for</span> <span class="nb">id</span><span class="p">,</span> <span class="n">thread</span> <span class="ow">in</span> <span class="n">threading</span><span class="o">.</span><span class="n">_active</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">thread</span> <span class="ow">is</span> <span class="bp">self</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">id</span>
+
+    <span class="k">def</span> <span class="nf">raise_exception</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">thread_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_id</span><span class="p">()</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">pythonapi</span><span class="o">.</span><span class="n">PyThreadState_SetAsyncExc</span><span class="p">(</span><span class="n">thread_id</span><span class="p">,</span>
+              <span class="n">ctypes</span><span class="o">.</span><span class="n">py_object</span><span class="p">(</span><span class="ne">SystemExit</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">pythonapi</span><span class="o">.</span><span class="n">PyThreadState_SetAsyncExc</span><span class="p">(</span><span class="n">thread_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Exception raise failure&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../index.html#one_channel_open_control.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Starting point for script</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="c1"># Spin up controller</span>
+    <span class="n">t1</span> <span class="o">=</span> <span class="n">controllerThread</span><span class="p">(</span><span class="s1">&#39;Thread 1&#39;</span><span class="p">)</span>
+    <span class="n">t1</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="c1"># Designate main thread for GUI</span>
+    <span class="n">root</span><span class="o">.</span><span class="n">mainloop</span><span class="p">()</span>
+
+    <span class="c1"># Kill controller once GUI is excited</span>
+    <span class="n">t1</span><span class="o">.</span><span class="n">raise_exception</span><span class="p">()</span>
+    <span class="n">t1</span><span class="o">.</span><span class="n">join</span><span class="p">()</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Medtronic Soft Robot for Surgical Intervention</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Brady King// Christopher Gonzalez-Millan // William Wang.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

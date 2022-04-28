@@ -1,0 +1,376 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>three_channel_open_control &#8212; Medtronic Soft Robot for Surgical Intervention 0.01 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for three_channel_open_control</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd"> * @file    three_channel_open_control.py</span>
+<span class="sd"> * @author  CU Boulder Medtronic Team 7</span>
+<span class="sd"> * @brief   This script allows for open loop control of</span>
+<span class="sd">            a 3 channel robot (i.e manually controlling pressures)</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">import</span> <span class="nn">NDI_communication</span>
+<span class="kn">import</span> <span class="nn">arduino_communcation</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">from</span> <span class="nn">queue</span> <span class="kn">import</span> <span class="n">Queue</span>
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">tkinter</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">tkinter</span> <span class="kn">import</span> <span class="n">ttk</span>
+<span class="kn">from</span> <span class="nn">ttkthemes</span> <span class="kn">import</span> <span class="n">ThemedStyle</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">csv_logger</span> <span class="kn">import</span> <span class="n">CsvLogger</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sin</span><span class="p">,</span> <span class="n">pi</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">signal</span> <span class="k">as</span> <span class="n">sg</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">random</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;data.log&#39;</span><span class="p">,</span> <span class="n">level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span>
+    <span class="nb">format</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1">,</span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+<span class="c1"># Init Arduino</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">arduino</span> <span class="o">=</span> <span class="n">arduino_communcation</span><span class="o">.</span><span class="n">arduino</span><span class="p">()</span>
+    <span class="n">arduino</span><span class="o">.</span><span class="n">selectChannels</span><span class="p">(</span><span class="n">arduino</span><span class="o">.</span><span class="n">ON</span><span class="p">,</span> <span class="n">arduino</span><span class="o">.</span><span class="n">ON</span><span class="p">,</span> <span class="n">arduino</span><span class="o">.</span><span class="n">ON</span><span class="p">)</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Arduino or NDI sensor not connected&quot;</span><span class="p">)</span>
+
+<span class="n">P_des</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">12.25</span><span class="p">,</span> <span class="mf">12.25</span><span class="p">,</span> <span class="mf">12.25</span><span class="p">])</span>     <span class="c1"># desired pressure we&#39;re sending to the Arduino (c0, c1, c2)</span>
+<span class="n">P_act</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>           <span class="c1"># actual pressure read from the pressure sensor (c0, c1, c2)</span>
+
+<span class="c1"># Queue for inter-thread communication (between GUI thread and controller thread)</span>
+<span class="n">commandsFromGUI</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
+
+<div class="viewcode-block" id="command"><a class="viewcode-back" href="../index.html#three_channel_open_control.command">[docs]</a><span class="k">class</span> <span class="nc">command</span><span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Basic command format to be used in the queue. We pass along</span>
+<span class="sd">    id&#39;s and any other important info in field1 and field2</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">field1</span><span class="p">,</span> <span class="n">field2</span><span class="p">,</span> <span class="n">field3</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="nb">id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">field1</span> <span class="o">=</span> <span class="n">field1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">field2</span> <span class="o">=</span> <span class="n">field2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">field3</span> <span class="o">=</span> <span class="n">field3</span></div>
+
+<div class="viewcode-block" id="GUI"><a class="viewcode-back" href="../index.html#three_channel_open_control.GUI">[docs]</a><span class="k">class</span> <span class="nc">GUI</span><span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Class for building GUI</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">master</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">master</span> <span class="o">=</span> <span class="n">master</span>
+        <span class="n">master</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;GUI&#39;</span><span class="p">)</span>
+        <span class="n">master</span><span class="o">.</span><span class="n">geometry</span><span class="p">(</span><span class="s2">&quot;400x350&quot;</span><span class="p">)</span>
+        <span class="n">master</span><span class="p">[</span><span class="s1">&#39;bg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;#474747&#39;</span>
+
+        <span class="c1"># &lt;=== ROW 0 ===&gt;</span>
+        <span class="n">command_label</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Send Commands&quot;</span><span class="p">)</span>
+        <span class="n">command_label</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+
+        <span class="c1"># &lt;=== ROW 1 ===&gt;</span>
+        <span class="c1"># Text label for position entry</span>
+        <span class="n">channel0_label</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Channel 0 Pressure:&quot;</span><span class="p">)</span>
+        <span class="n">channel0_label</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">30</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+        <span class="c1"># Entry widget for position</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel0_entry</span><span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel0_entry</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel0_entry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GUI_setChannel0</span><span class="p">)</span>
+
+        <span class="c1"># &lt;=== ROW 2 ===&gt;</span>
+        <span class="c1"># Text label for proportional gain entry</span>
+        <span class="n">channel1_label</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Channel 1 Pressure:&quot;</span><span class="p">)</span>
+        <span class="n">channel1_label</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">30</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+        <span class="c1">#Create an Entry widget to accept User Input</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel1_entry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel1_entry</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel1_entry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GUI_setChannel1</span><span class="p">)</span>
+
+        <span class="c1"># &lt;=== ROW 3 ===&gt;</span>
+        <span class="c1"># Text label for integral gain entry</span>
+        <span class="n">channel2_label</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Channel 2 Pressure:&quot;</span><span class="p">)</span>
+        <span class="n">channel2_label</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">30</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+        <span class="c1">#Create an Entry widget to accept User Input</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2_entry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2_entry</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2_entry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GUI_setChannel2</span><span class="p">)</span>
+
+        <span class="c1"># Diplaying data</span>
+        <span class="n">display_label</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Press/hold enter to display&quot;</span><span class="p">)</span>
+        <span class="n">display_label</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_entry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_entry</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_entry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GUI_handleDataDisplay</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_act_0_label</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;P0: &quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_act_0_label</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">30</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_act_1_label</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;P1: &quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_act_1_label</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">30</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_act_2_label</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;P2: &quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_act_2_label</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">30</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+
+        <span class="c1"># Record data</span>
+        <span class="n">command_label</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Data Recording&quot;</span><span class="p">)</span>
+        <span class="n">command_label</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+
+        <span class="n">start_log_button</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Start Logging&quot;</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">command</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">GUI_handleLoggingCommand</span><span class="p">(</span><span class="s2">&quot;start&quot;</span><span class="p">))</span>
+        <span class="n">start_log_button</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">11</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+
+        <span class="n">stop_log_button</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Stop Logging&quot;</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">command</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">GUI_handleLoggingCommand</span><span class="p">(</span><span class="s2">&quot;stop&quot;</span><span class="p">))</span>
+        <span class="n">stop_log_button</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">11</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+
+        <span class="n">clear_log_button</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Clear Log File&quot;</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">command</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">GUI_handleLoggingCommand</span><span class="p">(</span><span class="s2">&quot;clear&quot;</span><span class="p">))</span>
+        <span class="n">clear_log_button</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span> <span class="o">=</span> <span class="mi">11</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">sticky</span> <span class="o">=</span> <span class="n">W</span><span class="p">,</span> <span class="n">pady</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">padx</span> <span class="o">=</span> <span class="p">(</span><span class="mi">50</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+
+<div class="viewcode-block" id="GUI.GUI_setChannel0"><a class="viewcode-back" href="../index.html#three_channel_open_control.GUI.GUI_setChannel0">[docs]</a>    <span class="k">def</span> <span class="nf">GUI_setChannel0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the channel in pressure 0</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;Arduino&quot;</span><span class="p">,</span> <span class="s2">&quot;setPressure&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel0_entry</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span> <span class="c1"># arduino.channel0</span>
+        <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GUI.GUI_setChannel1"><a class="viewcode-back" href="../index.html#three_channel_open_control.GUI.GUI_setChannel1">[docs]</a>    <span class="k">def</span> <span class="nf">GUI_setChannel1</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the channel in pressure 1</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;Arduino&quot;</span><span class="p">,</span> <span class="s2">&quot;setPressure&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel1_entry</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span> <span class="c1"># arduino.channel1</span>
+        <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GUI.GUI_setChannel2"><a class="viewcode-back" href="../index.html#three_channel_open_control.GUI.GUI_setChannel2">[docs]</a>    <span class="k">def</span> <span class="nf">GUI_setChannel2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the channel in pressure 2</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;Arduino&quot;</span><span class="p">,</span> <span class="s2">&quot;setPressure&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel2_entry</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span> <span class="c1"># arduino.channel2</span>
+        <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GUI.GUI_handleDataDisplay"><a class="viewcode-back" href="../index.html#three_channel_open_control.GUI.GUI_handleDataDisplay">[docs]</a>    <span class="k">def</span> <span class="nf">GUI_handleDataDisplay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Display control algorithm parameters to the GUI</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">global</span> <span class="n">P_act</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_act_0_label</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;P0: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">P_act</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="mi">3</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_act_1_label</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;P1: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">P_act</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="mi">3</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_act_2_label</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;P2: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">P_act</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="mi">3</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="GUI.GUI_handleLoggingCommand"><a class="viewcode-back" href="../index.html#three_channel_open_control.GUI.GUI_handleLoggingCommand">[docs]</a>    <span class="k">def</span> <span class="nf">GUI_handleLoggingCommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Start logging</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">global</span> <span class="n">start_time</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;start&quot;</span><span class="p">):</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>                    <span class="c1"># start time for ramp and sinusoid signals</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;stop&quot;</span><span class="p">):</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;clear&quot;</span><span class="p">):</span>
+            <span class="c1"># Clear contents of log file</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;data.log&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">):</span>
+                <span class="k">pass</span></div></div>
+
+<div class="viewcode-block" id="controllerThread"><a class="viewcode-back" href="../index.html#three_channel_open_control.controllerThread">[docs]</a><span class="k">class</span> <span class="nc">controllerThread</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This thread is where the main controller is run</span>
+<span class="sd">    for the open controller</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+<div class="viewcode-block" id="controllerThread.run"><a class="viewcode-back" href="../index.html#three_channel_open_control.controllerThread.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Infinite loop for controller until turned off.</span>
+<span class="sd">        Continues to look for new commands from the GUI.</span>
+<span class="sd">        and runs the three channel main.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="c1"># Look for new commands</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">empty</span><span class="p">()</span> <span class="o">==</span> <span class="kc">False</span><span class="p">):</span>
+                    <span class="n">newCmd</span> <span class="o">=</span> <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">handleGUICommand</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">three_channel_main</span><span class="p">()</span>
+                <span class="c1"># Slow down controller so we give the arduino some</span>
+                <span class="c1"># time to relax. Don&#39;t want to be sending serial commands</span>
+                <span class="c1"># every loop the arduino executes</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">.07</span><span class="p">)</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Controller thread teminated&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="controllerThread.three_channel_main"><a class="viewcode-back" href="../index.html#three_channel_open_control.controllerThread.three_channel_main">[docs]</a>    <span class="k">def</span> <span class="nf">three_channel_main</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        main function used in thread to perform 3 channel control</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">global</span> <span class="n">P_des</span><span class="p">,</span> <span class="n">P_act</span><span class="p">,</span> <span class="n">r_act</span><span class="p">,</span> <span class="n">csv_logger</span>
+
+        <span class="c1"># Safety check so we don&#39;t the arduino a super high or low pressure!</span>
+        <span class="c1"># it will blow up if you have the wrong bounds</span>
+        <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">P_des</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">9.0</span><span class="p">:</span>
+                <span class="c1"># lower limit of the pressure we are sending into the controller</span>
+                <span class="n">P_des</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="mf">9.0</span>
+            <span class="k">elif</span> <span class="n">P_des</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">16.0</span><span class="p">:</span>
+                <span class="c1"># higher limit of the pressure we are sending into the controller</span>
+                <span class="n">P_des</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="mf">16.0</span>
+
+        <span class="c1"># get the actual pressure from the pressure sensor</span>
+        <span class="n">P_act</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">arduino</span><span class="o">.</span><span class="n">getActualPressure</span><span class="p">(</span><span class="n">arduino</span><span class="o">.</span><span class="n">channel0</span><span class="p">)</span>
+        <span class="n">P_act</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">arduino</span><span class="o">.</span><span class="n">getActualPressure</span><span class="p">(</span><span class="n">arduino</span><span class="o">.</span><span class="n">channel1</span><span class="p">)</span>
+        <span class="n">P_act</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">arduino</span><span class="o">.</span><span class="n">getActualPressure</span><span class="p">(</span><span class="n">arduino</span><span class="o">.</span><span class="n">channel2</span><span class="p">)</span>
+
+        <span class="c1"># send the desired pressure into Arduino</span>
+        <span class="n">arduino</span><span class="o">.</span><span class="n">sendDesiredPressure</span><span class="p">(</span><span class="n">arduino</span><span class="o">.</span><span class="n">channel0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">P_des</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">arduino</span><span class="o">.</span><span class="n">sendDesiredPressure</span><span class="p">(</span><span class="n">arduino</span><span class="o">.</span><span class="n">channel1</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">P_des</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">arduino</span><span class="o">.</span><span class="n">sendDesiredPressure</span><span class="p">(</span><span class="n">arduino</span><span class="o">.</span><span class="n">channel2</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">P_des</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span></div>
+
+<div class="viewcode-block" id="controllerThread.handleGUICommand"><a class="viewcode-back" href="../index.html#three_channel_open_control.controllerThread.handleGUICommand">[docs]</a>    <span class="k">def</span> <span class="nf">handleGUICommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">newCmd</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Function to handle commands from the GUI.</span>
+<span class="sd">        Takes place on controller thread</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">global</span> <span class="n">P_des</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">newCmd</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="s2">&quot;Arduino&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">newCmd</span><span class="o">.</span><span class="n">field1</span> <span class="o">==</span> <span class="s2">&quot;setPressure&quot;</span><span class="p">):</span>
+                <span class="n">P_des</span><span class="p">[</span><span class="n">newCmd</span><span class="o">.</span><span class="n">field2</span><span class="p">]</span> <span class="o">=</span> <span class="n">newCmd</span><span class="o">.</span><span class="n">field3</span></div>
+
+<div class="viewcode-block" id="controllerThread.get_id"><a class="viewcode-back" href="../index.html#three_channel_open_control.controllerThread.get_id">[docs]</a>    <span class="k">def</span> <span class="nf">get_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        returns id of the respective thread</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_thread_id&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thread_id</span>
+        <span class="k">for</span> <span class="nb">id</span><span class="p">,</span> <span class="n">thread</span> <span class="ow">in</span> <span class="n">threading</span><span class="o">.</span><span class="n">_active</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">thread</span> <span class="ow">is</span> <span class="bp">self</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">id</span></div>
+
+<div class="viewcode-block" id="controllerThread.raise_exception"><a class="viewcode-back" href="../index.html#three_channel_open_control.controllerThread.raise_exception">[docs]</a>    <span class="k">def</span> <span class="nf">raise_exception</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        raise exception for controller thread</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">thread_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_id</span><span class="p">()</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">pythonapi</span><span class="o">.</span><span class="n">PyThreadState_SetAsyncExc</span><span class="p">(</span><span class="n">thread_id</span><span class="p">,</span>
+              <span class="n">ctypes</span><span class="o">.</span><span class="n">py_object</span><span class="p">(</span><span class="ne">SystemExit</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">pythonapi</span><span class="o">.</span><span class="n">PyThreadState_SetAsyncExc</span><span class="p">(</span><span class="n">thread_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Exception raise failure&#39;</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../index.html#three_channel_open_control.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Starting point for script</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c1"># Spin up controller thread</span>
+    <span class="n">cThread</span> <span class="o">=</span> <span class="n">controllerThread</span><span class="p">(</span><span class="s1">&#39;Thread 1&#39;</span><span class="p">)</span>
+    <span class="n">cThread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="c1"># Designate main thread to GUI</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">Tk</span><span class="p">()</span>
+    <span class="n">style</span> <span class="o">=</span> <span class="n">ThemedStyle</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="n">style</span><span class="o">.</span><span class="n">set_theme</span><span class="p">(</span><span class="s2">&quot;equilux&quot;</span><span class="p">)</span>
+    <span class="n">GUI</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="n">root</span><span class="o">.</span><span class="n">mainloop</span><span class="p">()</span>
+
+    <span class="c1"># Kill controller once GUI is exited</span>
+    <span class="n">cThread</span><span class="o">.</span><span class="n">raise_exception</span><span class="p">()</span>
+    <span class="n">cThread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Medtronic Soft Robot for Surgical Intervention</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Brady King// Christopher Gonzalez-Millan // William Wang.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

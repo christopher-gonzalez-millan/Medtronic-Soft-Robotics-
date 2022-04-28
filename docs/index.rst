@@ -10,35 +10,29 @@ Welcome to Medtronic Soft Robot for Surgical Intervention's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-Main App
-===================
+Main
+========================
 .. automodule:: Main
    :members:
 
-
 Three Channel PI Control
-===================
+========================
 .. automodule:: three_channel_PI_control
    :members:
 
 Three Channel Open Control
-===================
+==========================
 .. automodule:: three_channel_open_control
    :members:
 
 One Channel PI Control
-===================
-.. automodule:: open_channel_PI_control
+======================
+.. automodule:: one_channel_PI_control
    :members:
 
 Open Channel Open Control
-===================
-.. automodule:: open_channel_open_control
-   :members:
-
-Open Channel Open Control
-===================
-.. automodule:: open_channel_open_control
+=========================
+.. automodule:: one_channel_open_control
    :members:
 
 Table map 

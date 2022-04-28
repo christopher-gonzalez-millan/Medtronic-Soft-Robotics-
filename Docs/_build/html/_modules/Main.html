@@ -1,0 +1,1074 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Main &#8212; Medtronic Soft Robot for Surgical Intervention 0.01 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for Main</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Wed Apr 20 14:52:22 2022</span>
+
+<span class="sd">@author: Christopher</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">tkinter</span> <span class="k">as</span> <span class="nn">tk</span>
+<span class="kn">from</span> <span class="nn">tkinter</span> <span class="kn">import</span> <span class="n">ttk</span>
+<span class="kn">from</span> <span class="nn">ttkthemes</span> <span class="kn">import</span> <span class="n">ThemedStyle</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sin</span><span class="p">,</span> <span class="n">pi</span><span class="p">,</span> <span class="n">sqrt</span><span class="p">,</span> <span class="n">cos</span>
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">from</span> <span class="nn">queue</span> <span class="kn">import</span> <span class="n">Queue</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">csv_logger</span> <span class="kn">import</span> <span class="n">CsvLogger</span>
+<span class="kn">import</span> <span class="nn">NDI_communication</span>
+<span class="kn">import</span> <span class="nn">arduino_communcation</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span><span class="p">,</span>  <span class="n">ImageTk</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">signal</span> <span class="k">as</span> <span class="n">sg</span>
+<span class="kn">import</span> <span class="nn">scipy.optimize</span> <span class="k">as</span> <span class="nn">sp_opt</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">matplotlib.backends.backend_tkagg</span> <span class="kn">import</span> <span class="p">(</span><span class="n">FigureCanvasTkAgg</span><span class="p">,</span> <span class="n">NavigationToolbar2Tk</span><span class="p">)</span>
+
+<span class="n">OUTPUT_PATH</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span>
+<span class="n">ASSETS_PATH</span> <span class="o">=</span> <span class="n">OUTPUT_PATH</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./assets&quot;</span><span class="p">)</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">GLOBAL HELPER FUNCTIONS</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c1">#TODO remove from global memory</span>
+<span class="k">def</span> <span class="nf">relative_to_assets</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">ASSETS_PATH</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;data.log&#39;</span><span class="p">,</span> <span class="n">level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span>
+    <span class="nb">format</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1">,</span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<span class="c1"># create csv logging object to store the data collected</span>
+<span class="n">header</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;sample_num&#39;</span><span class="p">,</span> <span class="s1">&#39;time_diff&#39;</span><span class="p">,</span> <span class="s1">&#39;z_des&#39;</span><span class="p">,</span> <span class="s1">&#39;x_des&#39;</span><span class="p">,</span> <span class="s1">&#39;z_act&#39;</span><span class="p">,</span> <span class="s1">&#39;x_act&#39;</span><span class="p">,</span> <span class="s1">&#39;P_des[0]&#39;</span><span class="p">,</span> <span class="s1">&#39;P_des[1]&#39;</span><span class="p">,</span> <span class="s1">&#39;P_des[2]&#39;</span><span class="p">,</span> <span class="s1">&#39;P_act[0]&#39;</span><span class="p">,</span> <span class="s1">&#39;P_act[1]&#39;</span><span class="p">,</span> <span class="s1">&#39;P_act[2]&#39;</span><span class="p">]</span>
+<span class="n">csv_logger</span> <span class="o">=</span> <span class="n">CsvLogger</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;Data Collection/Tracking Curves/data.csv&#39;</span><span class="p">,</span>
+                        <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1">,</span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+<span class="n">sample_num</span> <span class="o">=</span> <span class="mi">0</span>          <span class="c1"># variable to keep track of the samples for any data collection</span>
+<span class="c1"># Init EM Nav and Arduino</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">ndi</span> <span class="o">=</span> <span class="n">NDI_communication</span><span class="o">.</span><span class="n">NDISensor</span><span class="p">()</span>
+    <span class="n">arduino</span> <span class="o">=</span> <span class="n">arduino_communcation</span><span class="o">.</span><span class="n">arduino</span><span class="p">()</span>
+    <span class="n">arduino</span><span class="o">.</span><span class="n">selectChannels</span><span class="p">(</span><span class="n">arduino</span><span class="o">.</span><span class="n">ON</span><span class="p">,</span> <span class="n">arduino</span><span class="o">.</span><span class="n">ON</span><span class="p">,</span> <span class="n">arduino</span><span class="o">.</span><span class="n">ON</span><span class="p">)</span>
+<span class="k">except</span><span class="p">:</span>
+  <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Arduino or NDI sensor not connected&quot;</span><span class="p">)</span>
+
+<span class="c1"># Parameters for controller</span>
+<span class="n">z_des</span> <span class="o">=</span> <span class="mf">40.0</span>     <span class="c1"># stores the desired z position input by user</span>
+<span class="n">z_act</span> <span class="o">=</span> <span class="mf">0.0</span>     <span class="c1"># actual z_position from EM sensor</span>
+<span class="n">start_time</span> <span class="o">=</span> <span class="mi">0</span>      <span class="c1"># start time for the ramp and sinusoid signals</span>
+<span class="n">time_diff</span> <span class="o">=</span> <span class="mi">0</span>       <span class="c1"># time difference betweeen the start and current times</span>
+
+<span class="c1"># Parameters for the 3 channel controller</span>
+<span class="n">P_des</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">12.25</span><span class="p">,</span> <span class="mf">12.25</span><span class="p">,</span> <span class="mf">12.25</span><span class="p">])</span>     <span class="c1"># desired pressure we&#39;re sending to the Arduino (c0, c1, c2)</span>
+<span class="n">P_act</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>           <span class="c1"># actual pressure read from the pressure sensor (c0, c1, c2)</span>
+<span class="n">r_des</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>                <span class="c1"># desired position of robot in form (x, y)</span>
+<span class="n">r_act</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>                <span class="c1"># actual position of the robot using EM sensor (x, y)</span>
+<span class="n">k_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">.03</span><span class="p">,</span> <span class="mf">.03</span><span class="p">,</span> <span class="mf">.03</span><span class="p">])</span>             <span class="c1"># 1X Scale - proportional controller gain for c0, c1, c2</span>
+<span class="n">k_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">])</span>          <span class="c1"># 2X Scale - integral gain # TODO: figure out how to pass in integral gain and what is best gain value</span>
+<span class="n">k_d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">])</span>          <span class="c1"># Test derivative gain (TODO: figure out if this helps tracking)</span>
+<span class="n">dT</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">])</span>        <span class="c1"># time between cycles (seconds) # TODO: find a way to clock the cycles to get this value (may be different between each channel)</span>
+<span class="n">int_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>         <span class="c1"># sum of the integral term # TODO: figure out if this should be a global value</span>
+<span class="n">err_r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>                <span class="c1"># error between measured position and actual position</span>
+<span class="n">epsi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>            <span class="c1"># stores the solution to the force vector algorithm</span>
+<span class="n">epsi_prev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>       <span class="c1"># modified error in r (after force vector solution) for the previous time step # TODO: figure out if this should be a global value</span>
+<span class="n">max_pressure</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">15.5</span><span class="p">,</span> <span class="mf">15.2</span><span class="p">,</span> <span class="mf">15.5</span><span class="p">])</span>
+
+<span class="c1">#thread for controller</span>
+<span class="n">cThread</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="c1"># Queue for inter-thread communication</span>
+<span class="n">commandsFromGUI</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
+
+<span class="c1"># Class used for all commands</span>
+<span class="k">class</span> <span class="nc">command</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">field1</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">field2</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">field1</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">field2</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">field3</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">projectPostition</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defineCircle</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">50</span><span class="p">),</span> <span class="p">(</span><span class="mi">50</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">50</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buildProjectionWidget</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">updatePosition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+
+    <span class="k">def</span> <span class="nf">buildProjectionWidget</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">figure</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes</span>  <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s2">&quot;#424242&quot;</span><span class="p">,)</span>
+        <span class="c1"># change all spines</span>
+        <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;top&#39;</span><span class="p">,</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span><span class="s1">&#39;left&#39;</span><span class="p">,</span><span class="s1">&#39;right&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">axes</span> <span class="o">.</span><span class="n">spines</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span><span class="o">.</span><span class="n">set_linewidth</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="c1"># increase tick width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1">#postiotn projection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posProjectionPlot</span> <span class="o">=</span> <span class="n">FigureCanvasTkAgg</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">figure</span><span class="p">,</span> <span class="n">master</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posProjectionPlot</span><span class="o">.</span><span class="n">get_tk_widget</span><span class="p">()</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mf">1464.5130615234375</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mf">116.35806274414062</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">1230</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">1142</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posProjectionPlot</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mf">50.2</span><span class="p">,</span> <span class="mf">50.2</span><span class="p">)</span> <span class="c1">#TODO update to gloabl max</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">-</span><span class="mf">50.2</span><span class="p">,</span> <span class="mf">50.2</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="s1">&#39;ro&#39;</span><span class="p">,</span> <span class="n">linewidth</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="n">cc</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span> <span class="mi">1</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span> <span class="n">cc</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posProjectionPlot</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">defineCircle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">p3</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the center and radius of the circle passing the given 3 points.</span>
+<span class="sd">        In case the 3 points form a line, returns (None, infinity).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="n">p2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">p2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">p2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">p2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">bc</span> <span class="o">=</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">temp</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">cd</span> <span class="o">=</span> <span class="p">(</span><span class="n">temp</span> <span class="o">-</span> <span class="n">p3</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">p3</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p3</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">p3</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">det</span> <span class="o">=</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="n">p2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">p3</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="p">(</span><span class="n">p2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p3</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">det</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.0e-6</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+
+        <span class="c1"># Center of circle</span>
+        <span class="n">cx</span> <span class="o">=</span> <span class="p">(</span><span class="n">bc</span><span class="o">*</span><span class="p">(</span><span class="n">p2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">p3</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="n">cd</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span> <span class="o">/</span> <span class="n">det</span>
+        <span class="n">cy</span> <span class="o">=</span> <span class="p">((</span><span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">cd</span> <span class="o">-</span> <span class="p">(</span><span class="n">p2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p3</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">bc</span><span class="p">)</span> <span class="o">/</span> <span class="n">det</span>
+
+        <span class="n">radius</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">cx</span> <span class="o">-</span> <span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">cy</span> <span class="o">-</span> <span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">((</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">),</span> <span class="n">radius</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">inCircle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">pow</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="nb">pow</span><span class="p">((</span><span class="n">y</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="nb">pow</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span>
+
+<span class="c1"># a subclass of Canvas for dealing with resizing of windows</span>
+<div class="viewcode-block" id="ResizingCanvas"><a class="viewcode-back" href="../index.html#Main.ResizingCanvas">[docs]</a><span class="k">class</span> <span class="nc">ResizingCanvas</span><span class="p">(</span><span class="n">tk</span><span class="o">.</span><span class="n">Canvas</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">parent</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">tk</span><span class="o">.</span><span class="n">Canvas</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Configure&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_resize</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">winfo_reqheight</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">winfo_reqwidth</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">on_resize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">event</span><span class="p">):</span>
+        <span class="c1"># determine the ratio of old width/height to new width/height</span>
+        <span class="n">wscale</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">width</span><span class="p">)</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">width</span>
+        <span class="n">hscale</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">height</span><span class="p">)</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">height</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">height</span>
+        <span class="c1"># resize the canvas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+        <span class="c1"># rescale all the objects tagged with the &quot;all&quot; tag</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">(</span><span class="s2">&quot;all&quot;</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">wscale</span><span class="p">,</span><span class="n">hscale</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="pidTuningWindow"><a class="viewcode-back" href="../index.html#Main.pidTuningWindow">[docs]</a><span class="k">class</span> <span class="nc">pidTuningWindow</span><span class="p">(</span><span class="n">tk</span><span class="o">.</span><span class="n">Frame</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">tk</span><span class="o">.</span><span class="n">Frame</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">winfo_screenwidth</span><span class="p">(),</span> <span class="n">parent</span><span class="o">.</span><span class="n">winfo_screenheight</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span> <span class="o">=</span> <span class="n">ResizingCanvas</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">bg</span> <span class="o">=</span> <span class="s2">&quot;#626262&quot;</span><span class="p">,</span>
+            <span class="n">height</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">,</span>
+            <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span>
+            <span class="n">bd</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">highlightthickness</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">borderwidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">relief</span> <span class="o">=</span> <span class="s2">&quot;raised&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buildUX</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buildUI</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">expand</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">fill</span> <span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateDisplay</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">buildUX</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># container</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_rectangle</span><span class="p">(</span><span class="mf">40.0</span> <span class="p">,</span><span class="mf">40.0</span> <span class="p">,</span> <span class="mf">721.0739135742188</span> <span class="p">,</span> <span class="mf">913.536132813</span> <span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#424242&quot;</span><span class="p">,</span> <span class="n">outline</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+        <span class="c1">#air pressure widget</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">232.0</span> <span class="p">,</span> <span class="mf">60.0</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;PID Tuning&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">32</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">81.57742309570312</span> <span class="p">,</span><span class="mf">115.77041625976562</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Current Values:&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">24</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">201.29144287109375</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 1&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">285.79437255859375</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 2&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">371.31536865234375</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 3&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">638.647216796875</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 1&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">558.1863403320312</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 2&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">730.7073364257812</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 3 &quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">81.57742309570312</span> <span class="p">,</span><span class="mf">476.1624145507812</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Desired values:&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">24</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">buildUI</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1">#Pressure text</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kpText</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;0.0&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kpText</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">199</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">kiText</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;0.0&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kiText</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">284</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">kdText</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;0.0&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kdText</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">369</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="c1">#Pressure Entry Boxes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kpTextEntry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kpTextEntry</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">568</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kpTextEntry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleSetKpCommand</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">kiTextEntry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kiTextEntry</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">652</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kiTextEntry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleSetKiCommand</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">kdTextEntry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kdTextEntry</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">738</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kdTextEntry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleSetKdCommand</span><span class="p">)</span>
+
+<div class="viewcode-block" id="pidTuningWindow.handleSetKpCommand"><a class="viewcode-back" href="../index.html#Main.pidTuningWindow.handleSetKpCommand">[docs]</a>    <span class="k">def</span> <span class="nf">handleSetKpCommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the gain from the GUI</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;EM_Sensor&quot;</span><span class="p">,</span> <span class="s2">&quot;setKp&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kpTextEntry</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span>
+        <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateDisplay</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="pidTuningWindow.handleSetKiCommand"><a class="viewcode-back" href="../index.html#Main.pidTuningWindow.handleSetKiCommand">[docs]</a>    <span class="k">def</span> <span class="nf">handleSetKiCommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the gain from the GUI</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;EM_Sensor&quot;</span><span class="p">,</span> <span class="s2">&quot;setKi&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kiTextEntry</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span>
+        <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateDisplay</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="pidTuningWindow.handleSetKdCommand"><a class="viewcode-back" href="../index.html#Main.pidTuningWindow.handleSetKdCommand">[docs]</a>    <span class="k">def</span> <span class="nf">handleSetKdCommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the gain from the GUI</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;EM_Sensor&quot;</span><span class="p">,</span> <span class="s2">&quot;setKd&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kdTextEntry</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span>
+        <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateDisplay</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">updateDisplay</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">k_p</span><span class="p">,</span> <span class="n">k_i</span><span class="p">,</span> <span class="n">k_d</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">kpText</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="n">k_p</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kiText</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="n">k_i</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kdText</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="n">k_d</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="shalomWindow"><a class="viewcode-back" href="../index.html#Main.shalomWindow">[docs]</a><span class="k">class</span> <span class="nc">shalomWindow</span><span class="p">(</span><span class="n">tk</span><span class="o">.</span><span class="n">Frame</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">tk</span><span class="o">.</span><span class="n">Frame</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">image</span>  <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">relative_to_assets</span><span class="p">(</span><span class="s2">&quot;shalom.png&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img_copy</span><span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">background_image</span> <span class="o">=</span> <span class="n">ImageTk</span><span class="o">.</span><span class="n">PhotoImage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">background</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">background_image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">expand</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s1">&#39;&lt;Configure&gt;&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resize_image</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_resize_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">event</span><span class="p">):</span>
+
+        <span class="n">new_width</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">width</span>
+        <span class="n">new_height</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">height</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">img_copy</span><span class="o">.</span><span class="n">resize</span><span class="p">((</span><span class="n">new_width</span><span class="p">,</span> <span class="n">new_height</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">background_image</span> <span class="o">=</span> <span class="n">ImageTk</span><span class="o">.</span><span class="n">PhotoImage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">image</span> <span class="o">=</span>  <span class="bp">self</span><span class="o">.</span><span class="n">background_image</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="controlWindow"><a class="viewcode-back" href="../index.html#Main.controlWindow">[docs]</a><span class="k">class</span> <span class="nc">controlWindow</span><span class="p">(</span><span class="n">tk</span><span class="o">.</span><span class="n">Frame</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Frame</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">winfo_screenwidth</span><span class="p">(),</span> <span class="n">parent</span><span class="o">.</span><span class="n">winfo_screenheight</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span> <span class="o">=</span> <span class="n">ResizingCanvas</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">bg</span> <span class="o">=</span> <span class="s2">&quot;#626262&quot;</span><span class="p">,</span>
+            <span class="n">height</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">,</span>
+            <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span>
+            <span class="n">bd</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">highlightthickness</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">borderwidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">relief</span> <span class="o">=</span> <span class="s2">&quot;raised&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">expand</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">fill</span> <span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buildUX</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buildUI</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateDisplay</span><span class="p">()</span>
+
+<div class="viewcode-block" id="controlWindow.buildUX"><a class="viewcode-back" href="../index.html#Main.controlWindow.buildUX">[docs]</a>    <span class="k">def</span> <span class="nf">buildUX</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        UX Rectangle: making pretty but unnecessary rectangles</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#data recording container</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_rectangle</span><span class="p">(</span><span class="mf">1464.5130615234375</span> <span class="p">,</span> <span class="mf">1278.018798828125</span> <span class="p">,</span> <span class="mf">2694.99951171875</span> <span class="p">,</span> <span class="mf">1639.447021484375</span> <span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#424242&quot;</span><span class="p">,</span> <span class="n">outline</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+        <span class="c1">#channel pressure container</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_rectangle</span><span class="p">(</span><span class="mf">40.0</span> <span class="p">,</span><span class="mf">116.35806274414062</span> <span class="p">,</span> <span class="mf">721.0739135742188</span> <span class="p">,</span> <span class="mf">989.8941955566406</span> <span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#424242&quot;</span><span class="p">,</span> <span class="n">outline</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+        <span class="c1">#postion container</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_rectangle</span><span class="p">(</span><span class="mf">750.7725219726562</span> <span class="p">,</span> <span class="mf">767.9468383789062</span> <span class="p">,</span> <span class="mf">1431.846435546875</span> <span class="p">,</span> <span class="mf">1639.44677734375</span> <span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#424242&quot;</span><span class="p">,</span> <span class="n">outline</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+        <span class="c1">#controller type container</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_rectangle</span><span class="p">(</span><span class="mf">40.0</span> <span class="p">,</span> <span class="mf">1019.8941955566406</span> <span class="p">,</span> <span class="mf">721.0739135742188</span> <span class="p">,</span> <span class="mf">1280.8941955566406</span> <span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#424242&quot;</span><span class="p">,</span> <span class="n">outline</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        UX Text: defining text that remains constant</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#data loggin widget</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">1953.540283203125</span> <span class="p">,</span><span class="mf">1315.688720703125</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Data Recording&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span> <span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">32</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="c1">#position widget</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">967.5676879882812</span> <span class="p">,</span><span class="mf">787.2908935546875</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Positioning&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">32</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">793.3386840820312</span> <span class="p">,</span><span class="mf">845.3230590820312</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Current Position:&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">24</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">899.2613525390625</span> <span class="p">,</span><span class="mf">930.8441772460938</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;x coordinate&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">899.2613525390625</span> <span class="p">,</span><span class="mf">1016.3651733398438</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;y coordinate&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">899.2613525390625</span> <span class="p">,</span><span class="mf">1100.867919921875</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;z coordinate&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">793.3386840820312</span> <span class="p">,</span><span class="mf">1204.715087890625</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Desired Position:&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">24</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">899.2613525390625</span> <span class="p">,</span><span class="mf">1290.236083984375</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;x coordinate&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">899.2613525390625</span> <span class="p">,</span><span class="mf">1374.739013671875</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;y coordinate&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">899.2613525390625</span> <span class="p">,</span><span class="mf">1460.260009765625</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;z coordinate&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="c1">#air pressure widget</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">232.0</span> <span class="p">,</span><span class="mf">140.0</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel Pressures&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">32</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">81.57742309570312</span> <span class="p">,</span><span class="mf">195.77041625976562</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Current Pressures:&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">24</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">281.29144287109375</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 1&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">365.79437255859375</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 2&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">451.31536865234375</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 3&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">638.647216796875</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 1&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">725.1863403320312</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 2&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">186.5096893310547</span> <span class="p">,</span><span class="mf">810.7073364257812</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Channel 3 &quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">20</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">81.57742309570312</span> <span class="p">,</span><span class="mf">556.1624145507812</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Desired Pressures:&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">24</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="c1">#controller type widget</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mf">252.0</span> <span class="p">,</span><span class="mf">1043.53613281</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Controller Type&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">32</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="c1">#Graph titles</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mi">1936</span> <span class="p">,</span><span class="mf">40.0</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Position Projection &quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">32</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_text</span><span class="p">(</span><span class="mi">922</span> <span class="p">,</span><span class="mf">40.0</span> <span class="p">,</span><span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;nw&quot;</span><span class="p">,</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Curvature Visualization&quot;</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span><span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;TkDefaultFont&quot;</span><span class="p">,</span> <span class="mi">32</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="c1">#medtronic logo</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">relative_to_assets</span><span class="p">(</span><span class="s2">&quot;medtronic1.png&quot;</span><span class="p">))</span>  <span class="c1"># PIL solution</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">resize</span><span class="p">((</span><span class="mi">690</span><span class="p">,</span> <span class="mi">121</span><span class="p">))</span> <span class="c1">#The (250, 250) is (height, width)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img</span> <span class="o">=</span> <span class="n">ImageTk</span><span class="o">.</span><span class="n">PhotoImage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">img</span><span class="p">)</span> <span class="c1"># convert to PhotoImage</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">create_image</span><span class="p">(</span><span class="mf">40.0</span> <span class="p">,</span> <span class="mf">1310.0</span> <span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="s1">&#39;nw&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">buildUI</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1">#position text</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xPosText</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;0.0&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xPosText</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">1113</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">928</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">yPosText</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>  <span class="n">text</span><span class="o">=</span><span class="s1">&#39;0.0&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yPosText</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">1113</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">1014</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">zPosText</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>  <span class="n">text</span><span class="o">=</span><span class="s1">&#39;0.0&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">zPosText</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">1113</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">1099</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="c1">#position entry boxes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xPosEntry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state</span><span class="o">=</span><span class="s1">&#39;disabled&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xPosEntry</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">1113</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">1288</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xPosEntry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleSetXPositionCommand</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">yPosEntry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state</span><span class="o">=</span><span class="s1">&#39;disabled&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yPosEntry</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">1113</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">1373</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yPosEntry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleSetYPositionCommand</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">zPosEntry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="s1">&#39;disabled&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">zPosEntry</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">1113</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">1460</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">zPosEntry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleSetZPositionCommand</span><span class="p">)</span>
+
+        <span class="c1">#Pressure text</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel0Text</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;0.0&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel0Text</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">279</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel1Text</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;0.0&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel1Text</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">364</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2Text</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;0.0&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2Text</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">449</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="c1">#Pressure Entry Boxes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel0Entry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state</span><span class="o">=</span><span class="s1">&#39;disabled&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel0Entry</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">648</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel0Entry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">setChannel0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel1Entry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state</span><span class="o">=</span><span class="s1">&#39;disabled&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel1Entry</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">732</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel1Entry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">setChannel1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2Entry</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state</span><span class="o">=</span><span class="s1">&#39;disabled&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2Entry</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">402</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">818</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">169</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">47</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2Entry</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;&lt;Return&gt;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">setChannel2</span><span class="p">)</span>
+
+        <span class="c1">#Data Logging Buttons</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span><span class="s2">&quot;Stop Logging&quot;</span><span class="p">,</span><span class="n">command</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleLoggingCommand</span><span class="p">(</span><span class="s2">&quot;stop&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">1921</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">1439</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">314</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">97</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">clear</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span><span class="s2">&quot;Clear Log File&quot;</span><span class="p">,</span><span class="n">command</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleLoggingCommand</span><span class="p">(</span><span class="s2">&quot;clear&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clear</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">2281</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span> <span class="n">rely</span><span class="o">=</span><span class="mi">1439</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">314</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">97</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span><span class="s2">&quot;Start Logging&quot;</span><span class="p">,</span><span class="n">command</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleLoggingCommand</span><span class="p">(</span><span class="s2">&quot;start&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">1565</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">1439</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">314</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">97</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="c1">#controller type buttons</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">open</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span><span class="s2">&quot;Open Controller&quot;</span><span class="p">,</span> <span class="n">command</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">startOpenControl</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">open</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">55</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">1113</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">314</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">97</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pid</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span><span class="s2">&quot;PI Controller&quot;</span><span class="p">,</span> <span class="n">command</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">startPidControl</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pid</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mi">392</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">1113</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span><span class="n">relwidth</span><span class="o">=</span><span class="mi">314</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">relheight</span><span class="o">=</span><span class="mi">97</span><span class="o">/</span><span class="mi">1824</span><span class="p">)</span>
+
+        <span class="c1">#tye of controller</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">controllerTypeText</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;No Controller Type Selected&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">controllerTypeText</span><span class="o">.</span><span class="n">place</span><span class="p">(</span><span class="n">relx</span><span class="o">=</span><span class="mf">362.0</span><span class="o">/</span><span class="mi">2736</span><span class="p">,</span><span class="n">rely</span><span class="o">=</span><span class="mi">1230</span><span class="o">/</span><span class="mi">1824</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="s1">&#39;n&#39;</span><span class="p">)</span>
+
+        <span class="c1">#position projection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projectionWidget</span> <span class="o">=</span> <span class="n">projectPostition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">updateDisplay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">r_des</span><span class="p">,</span> <span class="n">r_act</span><span class="p">,</span> <span class="n">y_des</span><span class="p">,</span> <span class="n">y_act</span><span class="p">,</span> <span class="n">int_sum</span><span class="p">,</span> <span class="n">P_act</span>
+
+        <span class="c1">#update pressure</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel0Text</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">P_act</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="mi">3</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel1Text</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">P_act</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="mi">3</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2Text</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">P_act</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="mi">3</span><span class="p">)))</span>
+
+        <span class="c1">#update postitoin</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xPosText</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">r_act</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="mi">3</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">zPosText</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">r_act</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="mi">3</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yPosText</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">z_act</span><span class="p">,</span><span class="mi">3</span><span class="p">)))</span>
+
+        <span class="c1">#update projection plot</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projectionWidget</span><span class="o">.</span><span class="n">updatePosition</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">r_act</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="mi">3</span><span class="p">),</span> <span class="nb">round</span><span class="p">(</span><span class="n">r_act</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="mi">3</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projectionWidget</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+        <span class="c1"># call again after 100 ms</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">after</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">updateDisplay</span><span class="p">)</span>
+
+<div class="viewcode-block" id="controlWindow.handleSetXPositionCommand"><a class="viewcode-back" href="../index.html#Main.controlWindow.handleSetXPositionCommand">[docs]</a>    <span class="k">def</span> <span class="nf">handleSetXPositionCommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the position from the GUI</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;EM_Sensor&quot;</span><span class="p">,</span> <span class="s2">&quot;setXPosition&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xPosEntry</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span>
+        <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="controlWindow.handleSetYPositionCommand"><a class="viewcode-back" href="../index.html#Main.controlWindow.handleSetYPositionCommand">[docs]</a>    <span class="k">def</span> <span class="nf">handleSetYPositionCommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the position from the GUI</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;EM_Sensor&quot;</span><span class="p">,</span> <span class="s2">&quot;setYPosition&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">yPosEntry</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span>
+        <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="controlWindow.handleSetZPositionCommand"><a class="viewcode-back" href="../index.html#Main.controlWindow.handleSetZPositionCommand">[docs]</a>    <span class="k">def</span> <span class="nf">handleSetZPositionCommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the position from the GUI</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;error z entry box not disabled&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="controlWindow.setChannel0"><a class="viewcode-back" href="../index.html#Main.controlWindow.setChannel0">[docs]</a>    <span class="k">def</span> <span class="nf">setChannel0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the channel in pressure 0</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;Arduino&quot;</span><span class="p">,</span> <span class="s2">&quot;setPressure&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel0Entry</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span> <span class="c1"># arduino.channel0</span>
+        <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="controlWindow.setChannel1"><a class="viewcode-back" href="../index.html#Main.controlWindow.setChannel1">[docs]</a>    <span class="k">def</span> <span class="nf">setChannel1</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the channel in pressure 1</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;Arduino&quot;</span><span class="p">,</span> <span class="s2">&quot;setPressure&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel1Entry</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span> <span class="c1"># arduino.channel1</span>
+        <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="controlWindow.setChannel2"><a class="viewcode-back" href="../index.html#Main.controlWindow.setChannel2">[docs]</a>    <span class="k">def</span> <span class="nf">setChannel2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Handle setting the channel in pressure 2</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newCmd</span> <span class="o">=</span> <span class="n">command</span><span class="p">(</span><span class="s2">&quot;Arduino&quot;</span><span class="p">,</span> <span class="s2">&quot;setPressure&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel2Entry</span><span class="o">.</span><span class="n">get</span><span class="p">()))</span> <span class="c1"># arduino.channel2</span>
+        <span class="n">commandsFromGUI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">newCmd</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="controlWindow.handleLoggingCommand"><a class="viewcode-back" href="../index.html#Main.controlWindow.handleLoggingCommand">[docs]</a>    <span class="k">def</span> <span class="nf">handleLoggingCommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Start logging</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">global</span> <span class="n">start_time</span><span class="p">,</span> <span class="n">sample_num</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;start&quot;</span><span class="p">):</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>                    <span class="c1"># start time for ramp and sinusoid signals</span>
+            <span class="n">sample_num</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;stop&quot;</span><span class="p">):</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;clear&quot;</span><span class="p">):</span>
+            <span class="c1"># Clear contents of log file</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;data.log&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">):</span>
+                <span class="k">pass</span></div>
+
+    <span class="k">def</span> <span class="nf">startOpenControl</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">cThread</span>
+
+        <span class="c1">#check if their is an active controller</span>
+        <span class="k">if</span> <span class="n">cThread</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stopPidControl</span><span class="p">()</span> <span class="c1">#close controller</span>
+
+        <span class="c1">#start new controller</span>
+        <span class="n">cThread</span> <span class="o">=</span> <span class="n">openControllerThread</span><span class="p">(</span><span class="s1">&#39;Thread 1&#39;</span><span class="p">)</span>
+        <span class="n">cThread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="c1">#activate gui</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">controllerTypeText</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Open Controller Type Selected&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel0Entry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;normal&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel1Entry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;normal&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2Entry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;normal&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stopOpenControl</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">cThread</span>
+
+        <span class="c1">#disable gui</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">controllerTypeText</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;No Controller Type Selected&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel0Entry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;disable&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel1Entry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;disable&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2Entry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;disable&quot;</span><span class="p">)</span>
+
+        <span class="n">cThread</span><span class="o">.</span><span class="n">raise_exception</span><span class="p">()</span>
+        <span class="n">cThread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">startPidControl</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">cThread</span>
+
+        <span class="c1">#check if their is an active controller</span>
+        <span class="k">if</span> <span class="n">cThread</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stopOpenControl</span><span class="p">()</span> <span class="c1">#close controller</span>
+
+        <span class="c1">#start new controller</span>
+        <span class="n">cThread</span> <span class="o">=</span> <span class="n">pidControllerThread</span><span class="p">(</span><span class="s1">&#39;Thread 1&#39;</span><span class="p">)</span>
+        <span class="n">cThread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="c1">#activate gui</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">controllerTypeText</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span><span class="s1">&#39;PID Controller Type Selected&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xPosEntry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;normal&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yPosEntry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;normal&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">zPosEntry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;normal&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stopPidControl</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">cThread</span>
+
+        <span class="c1">#disable gui</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">controllerTypeText</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;No Controller Type Selected&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xPosEntry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;disable&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yPosEntry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;disable&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">zPosEntry</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="s2">&quot;disable&quot;</span><span class="p">)</span>
+
+        <span class="n">cThread</span><span class="o">.</span><span class="n">raise_exception</span><span class="p">()</span>
+        <span class="n">cThread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span></div>
+
+<span class="k">class</span> <span class="nc">App</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="c1">#parent window setup</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">winfo_screenwidth</span><span class="p">(),</span> <span class="n">parent</span><span class="o">.</span><span class="n">winfo_screenheight</span><span class="p">()</span>
+        <span class="n">parent</span><span class="o">.</span><span class="n">geometry</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">x</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">))</span>
+        <span class="n">parent</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;GUI&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span>
+        <span class="c1"># create a navagiation bar</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">navbar</span> <span class="o">=</span> <span class="n">ttk</span><span class="o">.</span><span class="n">Notebook</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">controlFrame</span> <span class="o">=</span> <span class="n">controlWindow</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navbar</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pidFrame</span> <span class="o">=</span> <span class="n">pidTuningWindow</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navbar</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shalomFrame</span> <span class="o">=</span> <span class="n">shalomWindow</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navbar</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">navbar</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">expand</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">fill</span> <span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">controlFrame</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">expand</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">fill</span> <span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pidFrame</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">expand</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">fill</span> <span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shalomFrame</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">expand</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">fill</span> <span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">navbar</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">controlFrame</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;Controls&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">navbar</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pidFrame</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;PID Tuning&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">navbar</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shalomFrame</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;Shalom&#39;</span><span class="p">)</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    def setup(self):</span>
+<span class="sd">        self.controlWindow.startOpenControl()</span>
+<span class="sd">        newCmd = command(&quot;Arduino&quot;, &quot;setPressure&quot;, 0, float(max_pressure[0]) # arduino.channel0</span>
+<span class="sd">        commandsFromGUI.put(newCmd)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">class openControllerThread(threading.Thread):</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    Implements proportional controller</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    def __init__(self, name):</span>
+<span class="sd">        threading.Thread.__init__(self)</span>
+<span class="sd">        self.name = name</span>
+
+<span class="sd">    def run(self):</span>
+<span class="sd">        try:</span>
+<span class="sd">            while True:</span>
+<span class="sd">                # Look for new commands</span>
+<span class="sd">                if (commandsFromGUI.empty() == False):</span>
+<span class="sd">                    newCmd = commandsFromGUI.get()</span>
+<span class="sd">                    self.handleGUICommand(newCmd)</span>
+
+<span class="sd">                self.three_channel_main()</span>
+<span class="sd">                time.sleep(.07)</span>
+
+<span class="sd">        finally:</span>
+<span class="sd">            print(&#39;Controller thread teminated&#39;)</span>
+
+<span class="sd">    def three_channel_main(self):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        main function used in thread to perform 3 channel algorithm</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        global P_des, P_act, r_act, csv_logger</span>
+<span class="sd">        try:</span>
+<span class="sd">            for channel in range(3):</span>
+<span class="sd">                if P_des[channel] &lt; 9.0:</span>
+<span class="sd">                    # lower limit of the pressure we are sending into the controller</span>
+<span class="sd">                    P_des[channel] = 9.0</span>
+<span class="sd">                elif P_des[channel] &gt; 17.0:</span>
+<span class="sd">                    # higher limit of the pressure we are sending into the controller</span>
+<span class="sd">                    P_des[channel] = 17.0</span>
+
+<span class="sd">            # get the actual pressure from the pressure sensor</span>
+<span class="sd">            P_act[0] = arduino.getActualPressure(arduino.channel0)</span>
+<span class="sd">            P_act[1] = arduino.getActualPressure(arduino.channel1)</span>
+<span class="sd">            P_act[2] = arduino.getActualPressure(arduino.channel2)</span>
+
+<span class="sd">            # get actual position from EM sensor</span>
+<span class="sd">            # position = ndi.getPositionInRange()</span>
+<span class="sd">            r_act[0] = 0 # position.deltaX          # x dim</span>
+<span class="sd">            r_act[1] = 0 # position.deltaY          # y dim</span>
+
+<span class="sd">            # perform 3 channel control algorithm</span>
+<span class="sd">            # self.three_channel_algorithm()</span>
+
+<span class="sd">            # send the desired pressure into Arduino</span>
+<span class="sd">            arduino.sendDesiredPressure(arduino.channel0, float(P_des[0]))</span>
+<span class="sd">            arduino.sendDesiredPressure(arduino.channel1, float(P_des[1]))</span>
+<span class="sd">            arduino.sendDesiredPressure(arduino.channel2, float(P_des[2]))</span>
+
+<span class="sd">            # Log all control variables if needed / TODO: find out how to re-implement time_diff variable</span>
+<span class="sd">            # TODO: figure out if logging works with vectors/matrices</span>
+<span class="sd">            # logging.info(&#39;%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f&#39; % (r_des, r_act, P_des, P_act, k_p, k_i))</span>
+<span class="sd">            # if logging.getLogger().getEffectiveLevel() == logging.INFO:</span>
+<span class="sd">            #    csv_logger.info(&#39;%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f&#39; % (r_des, r_act, P_des, P_act, k_p, k_i))</span>
+<span class="sd">        except:</span>
+<span class="sd">            print(&quot;An exception occurred&quot;)</span>
+
+
+<span class="sd">    def handleGUICommand(self, newCmd):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        Function to handle commands from the GUI.</span>
+<span class="sd">        Takes place on controller thread</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        global P_des</span>
+
+<span class="sd">        if (newCmd.id == &quot;Arduino&quot;):</span>
+<span class="sd">            if (newCmd.field1 == &quot;setPressure&quot;):</span>
+<span class="sd">                P_des[newCmd.field2] = newCmd.field3</span>
+<span class="sd">                # print(&quot;Setting channel &quot; + str(newCmd.field2) + &quot; to &quot; + str(newCmd.field3))</span>
+
+
+<span class="sd">    def get_id(self):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        returns id of the respective thread</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        if hasattr(self, &#39;_thread_id&#39;):</span>
+<span class="sd">            return self._thread_id</span>
+<span class="sd">        for id, thread in threading._active.items():</span>
+<span class="sd">            if thread is self:</span>
+<span class="sd">                return id</span>
+
+<span class="sd">    def raise_exception(self):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        raise exception for controller thread</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        thread_id = self.get_id()</span>
+<span class="sd">        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,</span>
+<span class="sd">              ctypes.py_object(SystemExit))</span>
+<span class="sd">        if res &gt; 1:</span>
+<span class="sd">            ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)</span>
+<span class="sd">            print(&#39;Exception raise failure&#39;)</span>
+
+<span class="sd">class pidControllerThread(threading.Thread):</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    Implements proportional controller</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    def __init__(self, name):</span>
+<span class="sd">        threading.Thread.__init__(self)</span>
+<span class="sd">        self.name = name</span>
+
+<span class="sd">    def run(self):</span>
+<span class="sd">        try:</span>
+<span class="sd">            while True:</span>
+<span class="sd">                # Look for new commands</span>
+<span class="sd">                if (commandsFromGUI.empty() == False):</span>
+<span class="sd">                    newCmd = commandsFromGUI.get()</span>
+<span class="sd">                    self.handleGUICommand(newCmd)</span>
+
+<span class="sd">                # self.one_D_main()</span>
+<span class="sd">                self.three_channel_main()</span>
+<span class="sd">                time.sleep(.07)</span>
+
+<span class="sd">        finally:</span>
+<span class="sd">            print(&#39;Controller thread teminated&#39;)</span>
+
+<span class="sd">    def sinusoid_signal(self):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        Sinusoidal input function with regard to position for the 1D channel</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        global start_time, z_des, time_diff</span>
+
+<span class="sd">        current_time = time.time()</span>
+
+<span class="sd">        time_diff = current_time - start_time</span>
+
+<span class="sd">        A = 5       # amplitude of the sine signal [mm]</span>
+<span class="sd">        C = 60      # offset of the sine function [mm]</span>
+<span class="sd">        f = .1     # frequency of the signal [Hz]</span>
+
+<span class="sd">        z_des = A*sin(2*pi*f*time_diff) + C      # resulting sinusoidal z_des [mm]</span>
+
+<span class="sd">    def ramp_signal(self):</span>
+<span class="sd">        global start_time, z_des, time_diff</span>
+
+<span class="sd">        current_time = time.time()              # current time measured compared to start time</span>
+
+<span class="sd">        time_diff = current_time - start_time   # time difference used for the signal</span>
+
+<span class="sd">        A = (80 - 50)/2                         # amplitude of the ramp signal</span>
+<span class="sd">        C = (80 - 50)/2 + 50                    # shifts the signal up to range of 50 mm to 90 mm</span>
+<span class="sd">        T = 30                                # period of the signal in seconds</span>
+
+<span class="sd">        z_des = A*sg.sawtooth((2*pi/T)*time_diff, width = 0.5) + C       # ramp signal set as a triangle wave</span>
+
+<span class="sd">    def circle_signal(self):</span>
+<span class="sd">        global start_time, r_des, time_diff</span>
+
+<span class="sd">        current_time = time.time()              # current time compared to start time</span>
+
+<span class="sd">        time_diff = current_time - start_time   # time difference used in the signal / TODO: incorporate the data logger into this function</span>
+
+<span class="sd">        radius = 15                             # radius of the circle in mm</span>
+
+<span class="sd">        T = 60                                  # period of the circle (in seconds)</span>
+<span class="sd">        center = np.array([0, 0])           # center of the circle script (z, x)</span>
+
+<span class="sd">        # parametric equations that represent circle as a function of time</span>
+<span class="sd">        r_des[0] = center[0] + radius*cos((2*pi/T)*time_diff)        # in z</span>
+<span class="sd">        r_des[1] = center[1] + radius*sin((2*pi/T)*time_diff)        # in x</span>
+
+<span class="sd">    def fig_eight_signal(self):</span>
+<span class="sd">        global start_time, r_des, time_diff</span>
+
+<span class="sd">        current_time = time.time()              # current time compared to start time</span>
+
+<span class="sd">        time_diff = current_time - start_time   # time difference used in the signal / TODO: incorporate the data logger into this function</span>
+
+<span class="sd">        radius = 15                             # &quot;radius&quot; of the figure eight in mm</span>
+
+<span class="sd">        T = 60                                  # period of the figure eight (in seconds)</span>
+<span class="sd">        center = np.array([0, 0])           # center of the figure eight script (z, x)</span>
+
+<span class="sd">        # parametric equations that represent figure eight as a function of time</span>
+<span class="sd">        r_des[0] = center[0] + radius*sin((2*pi/T)*time_diff)                                # in z</span>
+<span class="sd">        r_des[1] = center[1] + radius*sin((2*pi/T)*time_diff)*cos((2*pi/T)*time_diff)        # in x</span>
+
+<span class="sd">    def three_channel_main(self):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        main function used in thread to perform 3 channel algorithm</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        global time_diff, r_des, r_act, P_des, P_act, csv_logger, sample_num, z_act</span>
+<span class="sd">        try:</span>
+<span class="sd">            # get the actual pressure from the pressure sensor</span>
+<span class="sd">            P_act[0] = arduino.getActualPressure(arduino.channel0)</span>
+<span class="sd">            P_act[1] = arduino.getActualPressure(arduino.channel1)</span>
+<span class="sd">            P_act[2] = arduino.getActualPressure(arduino.channel2)</span>
+<span class="sd">            # print(&quot;P_act&quot;, P_act)</span>
+
+<span class="sd">            # get actual position from EM sensor</span>
+<span class="sd">            position = ndi.getPositionInRange()</span>
+<span class="sd">            r_act[1] = position.deltaX          # x dim</span>
+<span class="sd">            r_act[0] = position.deltaZ          # y dim</span>
+<span class="sd">            z_act = position.deltaZ          # y dim</span>
+<span class="sd">            # print(&quot;r_act[0]: &quot; + str(r_act[0]) + &quot;r_act[1]: &quot; + str(r_act[1]))</span>
+
+<span class="sd">            # perform 3 channel control algorithm</span>
+<span class="sd">            self.three_channel_algorithm()</span>
+
+<span class="sd">            # send the desired pressure into Arduino</span>
+<span class="sd">            self.sendDesiredPressure()</span>
+
+<span class="sd">            # Log all control variables if needed / TODO: find out how to re-implement time_diff variable</span>
+<span class="sd">            # TODO: figure out if logging works with vectors/matrices</span>
+<span class="sd">            logging.info(&#39;%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f&#39; % \</span>
+<span class="sd">                (sample_num, time_diff, r_des[0], r_des[1], r_act[0], r_act[1], P_des[0], P_des[1], P_des[2], P_act[0], P_act[1], P_act[2]))</span>
+<span class="sd">            if logging.getLogger().getEffectiveLevel() == logging.INFO:</span>
+<span class="sd">                csv_logger.info(&#39;%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f&#39; % \</span>
+<span class="sd">                    (sample_num, time_diff, r_des[0], r_des[1], r_act[0], r_act[1], P_des[0], P_des[1], P_des[2], P_act[0], P_act[1], P_act[2]))</span>
+
+<span class="sd">            # update sample number for next data point</span>
+<span class="sd">            sample_num = sample_num + 1</span>
+<span class="sd">        except:</span>
+<span class="sd">            print(&quot;An exception occurred&quot;)</span>
+
+<span class="sd">    def three_channel_algorithm(self):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        Proportional/PI feedback loop algorithm (vector based solution -- includes dot product and bounded least squares solution)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        global r_des, r_act, err_r, P_des, P_act, k_p, k_i, k_d, dT, int_sum, epsi, epsi_prev, start_time</span>
+
+<span class="sd">        if start_time &gt; 0:</span>
+<span class="sd">            self.circle_signal()</span>
+
+<span class="sd">        # Calculate the error between current and desired positions</span>
+<span class="sd">        err_r = r_des - r_act</span>
+<span class="sd">        # print(&quot;err_r: &quot;, err_r)</span>
+
+<span class="sd">        # perform force vector calculations</span>
+<span class="sd">        self.forceVectorCalc()</span>
+
+<span class="sd">        # Calculate the integral sum for integral control</span>
+<span class="sd">        int_sum = int_sum + 0.5*(epsi + epsi_prev)*dT               # these are all element-wise operations / TODO: check the matrix math here</span>
+<span class="sd">        for i in range(len(int_sum)):                               # checks the integral sum to see if it&#39;s in range (hardcoded integral windup)</span>
+<span class="sd">            if int_sum[i] &gt; 10:</span>
+<span class="sd">                int_sum[i] = 10</span>
+<span class="sd">            elif int_sum[i] &lt; -10:</span>
+<span class="sd">                int_sum[i] = -10</span>
+
+<span class="sd">        # Calculate the derivative term of the controller (TODO: figure out if this term helps tracking)</span>
+<span class="sd">        deriv = (epsi - epsi_prev)/dT</span>
+
+<span class="sd">        # &lt; ------- Feedback controller --------- &gt;</span>
+<span class="sd">        del_P_des = k_p*epsi + k_i*(int_sum) + k_d*deriv                     # should be element-wise operations / TODO: check the matrix math here</span>
+<span class="sd">        P_des = P_act + del_P_des</span>
+
+<span class="sd">        # print(&quot;del_P_des: &quot;, del_P_des)</span>
+<span class="sd">        # print(&quot;P_act: &quot;, P_act)</span>
+<span class="sd">        # print(&quot;P_des: &quot;, P_des)</span>
+
+<span class="sd">        # Check for windup of the integrator</span>
+<span class="sd">        # if (P_des &gt;= 13.25) or (P_des &lt;= 9.0):</span>
+<span class="sd">        #     P_des = k_p*epsi_z</span>
+
+<span class="sd">        # Update the error value for next iteration of epsi_prev</span>
+<span class="sd">        epsi_prev = epsi</span>
+
+<span class="sd">    def forceVectorCalc(self):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        calculates the force vector solution for the controller given the error vector and the unit vectors of each channel</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        global err_r, epsi</span>
+
+<span class="sd">        # &lt;----- Bounded least squares implementation -----&gt;</span>
+<span class="sd">        # array that contains C1, C2, C3 unit vectors</span>
+<span class="sd">        A = np.array([[sqrt(3)/2, -sqrt(3)/2, 0], [1/2, 1/2, -1]])</span>
+
+<span class="sd">        # perform unbounded least squares</span>
+<span class="sd">        sol = sp_opt.lsq_linear(A, err_r)</span>
+
+<span class="sd">        # return the solution to the optimization (m, n, p)</span>
+<span class="sd">        epsi = sol.x</span>
+<span class="sd">        # print(&quot;epsi: &quot;, epsi)</span>
+
+<span class="sd">        # # &lt;----- Dot product method -----&gt;</span>
+<span class="sd">        # # develop channel unit vectors</span>
+<span class="sd">        # C0 = A[:, 0]</span>
+<span class="sd">        # C1 = A[:, 1]</span>
+<span class="sd">        # C2 = A[:, 2]</span>
+
+<span class="sd">        # # dot product of error vector along the channel vectors</span>
+<span class="sd">        # epsi[0] = np.dot(err_r, C0)</span>
+<span class="sd">        # epsi[1] = np.dot(err_r, C1)</span>
+<span class="sd">        # epsi[2] = np.dot(err_r, C2)</span>
+<span class="sd">        # print(&quot;epsi: &quot;, epsi)</span>
+
+<span class="sd">    def sendDesiredPressure(self):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        convert P_des and send this pressure into the Arduino</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        global P_des</span>
+<span class="sd">        for i in range(len(P_des)):</span>
+<span class="sd">            # TODO: check the range limits for the pressure being sent for the smaller robot</span>
+<span class="sd">            if P_des[i] &lt; 9.0:</span>
+<span class="sd">                # lower limit of the pressure we are sending into the controller</span>
+<span class="sd">                P_des[i] = 9.0</span>
+<span class="sd">            elif P_des[i] &gt; max_pressure[i]:</span>
+<span class="sd">                # higher limit of the pressure we are sending into the controller</span>
+<span class="sd">                P_des[i] = max_pressure[i]</span>
+
+<span class="sd">        # send each channel pressure</span>
+<span class="sd">        arduino.sendDesiredPressure(arduino.channel0, float(P_des[0]))</span>
+<span class="sd">        arduino.sendDesiredPressure(arduino.channel1, float(P_des[1]))</span>
+<span class="sd">        arduino.sendDesiredPressure(arduino.channel2, float(P_des[2]))</span>
+
+<span class="sd">    def handleGUICommand(self, newCmd):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        Function to handle commands from the GUI.</span>
+<span class="sd">        Takes place on controller thread</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        global r_des, k_p, k_i, k_d</span>
+
+<span class="sd">        if (newCmd.id == &quot;EM_Sensor&quot;):</span>
+<span class="sd">            if (newCmd.field1 == &quot;setXPosition&quot;):</span>
+<span class="sd">                r_des[1] = newCmd.field2</span>
+<span class="sd">            elif (newCmd.field1 == &quot;setYPosition&quot;):</span>
+<span class="sd">                r_des[0] = newCmd.field2</span>
+<span class="sd">                logging.debug(&quot;\nCommand recieved to set position to &quot;, z_des)</span>
+<span class="sd">            elif (newCmd.field1 == &quot;setKp&quot;):</span>
+<span class="sd">                k_p[0] = newCmd.field2</span>
+<span class="sd">                k_p[1] = newCmd.field2</span>
+<span class="sd">                k_p[2] = newCmd.field2</span>
+<span class="sd">                logging.debug(&quot;\nCommand recieved to set proportional gain to&quot;, k_p)</span>
+<span class="sd">            elif (newCmd.field1 == &quot;setKi&quot;):</span>
+<span class="sd">                k_i[0] = newCmd.field2</span>
+<span class="sd">                k_i[1] = newCmd.field2</span>
+<span class="sd">                k_i[2] = newCmd.field2</span>
+<span class="sd">                logging.debug(&quot;\nCommand recieved to set integral gain to&quot;, k_i)</span>
+<span class="sd">            elif (newCmd.field1 == &quot;setKd&quot;):</span>
+<span class="sd">                k_d[0] = newCmd.field2</span>
+<span class="sd">                k_d[1] = newCmd.field2</span>
+<span class="sd">                k_d[2] = newCmd.field2</span>
+<span class="sd">                logging.debug(&quot;\nCommand recieved to set integral gain to&quot;, k_d)</span>
+
+
+<span class="sd">    def get_id(self):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        returns id of the respective thread</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        if hasattr(self, &#39;_thread_id&#39;):</span>
+<span class="sd">            return self._thread_id</span>
+<span class="sd">        for id, thread in threading._active.items():</span>
+<span class="sd">            if thread is self:</span>
+<span class="sd">                return id</span>
+
+<span class="sd">    def raise_exception(self):</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        raise exception for controller thread</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        thread_id = self.get_id()</span>
+<span class="sd">        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,</span>
+<span class="sd">              ctypes.py_object(SystemExit))</span>
+<span class="sd">        if res &gt; 1:</span>
+<span class="sd">            ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)</span>
+<span class="sd">            print(&#39;Exception raise failure&#39;)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="c1">#function to calibrate the correct DPI of current computer</span>
+    <span class="n">ctypes</span><span class="o">.</span><span class="n">windll</span><span class="o">.</span><span class="n">shcore</span><span class="o">.</span><span class="n">SetProcessDpiAwareness</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="c1"># Designate main thread to GUI</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Tk</span><span class="p">()</span>
+    <span class="n">style</span> <span class="o">=</span> <span class="n">ThemedStyle</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="n">style</span><span class="o">.</span><span class="n">set_theme</span><span class="p">(</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+    <span class="n">App</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="c1"># root.resizable(True, True)</span>
+    <span class="n">root</span><span class="o">.</span><span class="n">mainloop</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">cThread</span><span class="p">:</span>
+        <span class="c1"># Kill controller once GUI is exited</span>
+        <span class="n">cThread</span><span class="o">.</span><span class="n">raise_exception</span><span class="p">()</span>
+        <span class="n">cThread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Medtronic Soft Robot for Surgical Intervention</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Brady King// Christopher Gonzalez-Millan // William Wang.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -5,8 +5,8 @@
             used for 3 channel robots
 '''
 from cmath import cos
-from NDI_Code.NDISensor import NDISensor
-from Py_Arduino_Communication.arduino_control import arduino_control
+import NDI_communication
+import arduino_communcation
 import threading
 from queue import Queue
 import ctypes
@@ -22,7 +22,7 @@ import scipy.optimize as sp_opt
 import numpy as np
 
 # Data Collection
-logging.basicConfig(filename = 'data.log', level = logging.WARNING, 
+logging.basicConfig(filename = 'data.log', level = logging.WARNING,
     format = '%(asctime)s,%(message)s')
 header = ['date', 'sample_num', 'time_diff', 'z_des', 'x_des', 'z_act', 'x_act', 'P_des[0]', 'P_des[1]', 'P_des[2]', 'P_act[0]', 'P_act[1]', 'P_act[2]']
 csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
@@ -30,10 +30,12 @@ csv_logger = CsvLogger(filename='Data Collection/Tracking Curves/data.csv',
 sample_num = 0          # variable to keep track of the samples for any data collection
 
 # Init EM Nav and Arduino
-ndi = NDISensor.NDISensor()
-arduino = arduino_control.arduino()
-arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
-
+try:
+    ndi = NDI_communication.NDISensor()
+    arduino = arduino_communcation.arduino()
+    arduino.selectChannels(arduino.ON, arduino.ON, arduino.ON)
+except:
+    print("Arduino or NDI sensor not connected")
 # Times used for running predefined sequences like tracking a circle
 start_time = 0      # start time for the circle signals
 time_diff = 0       # time difference betweeen the start and current times
@@ -41,12 +43,12 @@ time_diff = 0       # time difference betweeen the start and current times
 # <== 2X Robot Parameters ==>
 '''
 These gain values have been tuned for the 2x robots
-that we were made. It can vary for all the different robots, 
+that we were made. It can vary for all the different robots,
 especially the max pressure. Last value is bound for int sum.
 This is where we reset the integral term to 0 to avoid windup
 '''
 k_p = np.array([.04, .04, .04])
-k_i = np.array([0.01, 0.01, 0.01]) 
+k_i = np.array([0.01, 0.01, 0.01])
 k_d = np.array([0.001, 0.001, 0.001])
 max_pressure = np.array([16, 16, 16])
 # int_sum (max, min) = (10, -10)
@@ -54,12 +56,12 @@ max_pressure = np.array([16, 16, 16])
 # <== 1X Robot Parameters ==>
 '''
 These gain values have been tuned for the 2x robots
-that we were made. It can vary for all the different robots, 
+that we were made. It can vary for all the different robots,
 especially the max pressure. Last value is bound for int sum.
 This is where we reset the integral term to 0 to avoid windup
 '''
 # k_p = np.array([.03, .03, .03])
-# k_i = np.array([0.01, 0.01, 0.01]) 
+# k_i = np.array([0.01, 0.01, 0.01])
 # k_d = np.array([0.001, 0.001, 0.001])
 # max_pressure = np.array([15.5, 15.2, 15.5])
 # int_sum = (max, min) = (5, -5)
@@ -93,7 +95,7 @@ class command:
     '''
     Basic command format to be used in the queue. We pass along
     id's and any other important info in field1 and field2
-    ''' 
+    '''
     def __init__(self, id, field1, field2):
         self.id = id
         self.field1 = field1
@@ -226,7 +228,7 @@ class GUI:
 
     def GUI_handleDataDisplay(self, *args):
         '''
-        Display control algorithm parameters to the GUI. When the GUI is open, 
+        Display control algorithm parameters to the GUI. When the GUI is open,
         you can press and hold enter to display all the values
         '''
         global r_des, r_act, y_des, y_act, int_sum
@@ -298,14 +300,14 @@ class controllerThread(threading.Thread):
         '''
         global start_time, r_des, time_diff
 
-        current_time = time.time()              # current time compared to start time    
+        current_time = time.time()              # current time compared to start time
 
         time_diff = current_time - start_time   # time difference used in the signal
-        
+
         radius = 15                             # radius of the circle in mm
 
         T = 60                                  # period of the circle (in seconds)
-        center = np.array([0, 0])           # center of the circle script (z, x)       
+        center = np.array([0, 0])           # center of the circle script (z, x)
 
         # parametric equations that represent circle as a function of time
         r_des[0] = center[0] + radius*cos((2*pi/T)*time_diff)        # in z
@@ -317,14 +319,14 @@ class controllerThread(threading.Thread):
         '''
         global start_time, r_des, time_diff
 
-        current_time = time.time()              # current time compared to start time    
+        current_time = time.time()              # current time compared to start time
 
         time_diff = current_time - start_time   # time difference used in the signal
-        
+
         radius = 15                             # "radius" of the figure eight in mm
 
         T = 60                                  # period of the figure eight (in seconds)
-        center = np.array([0, 0])           # center of the figure eight script (z, x)       
+        center = np.array([0, 0])           # center of the figure eight script (z, x)
 
         # parametric equations that represent figure eight as a function of time
         r_des[0] = center[0] + radius*sin((2*pi/T)*time_diff)                                # in z
@@ -387,7 +389,7 @@ class controllerThread(threading.Thread):
                 int_sum[i] = 10
             elif int_sum[i] < -10:
                 int_sum[i] = -10
-        
+
         # Calculate the derivative term of the controller
         deriv = (epsi - epsi_prev)/dT
 
