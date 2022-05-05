@@ -594,7 +594,7 @@ class App:
 
     """
 
-"""
+
 class openControllerThread(threading.Thread):
     '''
     Implements proportional controller
@@ -954,7 +954,7 @@ class pidControllerThread(threading.Thread):
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
             print('Exception raise failure')
-"""
+
 
 def main():
     #function to calibrate the correct DPI of current computer
